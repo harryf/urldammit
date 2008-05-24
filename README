@@ -9,26 +9,56 @@ Written in Python, using web.py (http://webpy.org)
 Design by FAQ...
 
 Q: How does it discover HTTP status 200 URLs?
-A: You tell it, either explictly (e.g. a script making successive POSTs to urldammit) or implicity, as your site serves HTTP status 200 responses
+A: You tell it, either explictly (e.g. a script making successive
+   POSTs to urldammit) or implicity, as your site serves HTTP
+   status 200 responses
 
 Q: How does it determine that a formerly status 200 URL is now status 404?
-A: Again you tell it, either by explicitly iterating over the status 200 URL's it is aware of and testing them against your site or at the time you serve status 404 responses
+A: Again you tell it, either by explicitly iterating over the status 200
+   URL's it is aware of and testing them against your site or at the time
+   you serve status 404 responses
 
 Q: How do I see which URLs are broken?
 A: By accessing the CouchDB view which lists status 404 URLs
 
 Q: How do I point a broken URL at a new status 200 URL?
-A: Via an explicit HTTP POST containing instructions to point one (404) URL at a (200) URL
+A: Via an explicit HTTP POST containing instructions to point one
+   (404) URL at a (200) URL
 
 Some use cases to make more sense;
 
-Every time you serve a status 200 URL which corresponds to a resource, e.g. http://example.com/articles/4 , you call urldammit with the URL of that resource, the status code (200) and optionally some hints about information that resource contains (e.g. the title: "Dogs and Cats").
+Every time you serve a status 200 URL which corresponds to a
+resource, e.g. http://example.com/articles/4 , you call urldammit
+with the URL of that resource, the status code (200) and optionally
+some hints about information that resource contains
+(e.g. the title: "Dogs and Cats").
 
-Now let's say article #4 is stored in a DB and later gets deleted. Using your 404 handle, you report to urldammit every time you serve a 404 page so the next time someone requests, http://example.com/articles/4 you tell urldammit it's a 404 and it marks it's record for that URL with this information, as well as the (last) time the request was made.
+Now let's say article #4 is stored in a DB and later gets deleted.
+Using your 404 handle, you report to urldammit every time you serve
+a 404 page so the next time someone requests,
+http://example.com/articles/4 you tell urldammit it's a 404 and it
+marks it's record for that URL with this information, as well as
+the (last) time the request was made.
 
-urldammit is now able to provide a report showing you there's a broken link on your site and when it was last requested, allowing you to take some action.
+urldammit is now able to provide a report showing you there's a
+broken link on your site and when it was last requested, allowing
+you to take some action.
 
-Meanwhile, on reporting 404 to urldammit, for URL http://example.com/articles/4, urldammit returns you the hint you stored when the page was 200 - the title "Dogs and Cats" - using this you're able to search your site and the suggest (on the 404 page you deliver to the user) they try the article "Cats and Dogs" instead.
+Meanwhile, on reporting 404 to urldammit, for URL
+http://example.com/articles/4, urldammit returns you the hint you
+stored when the page was 200 - the title "Dogs and Cats" - using
+this you're able to search your site and the suggest (on the 404
+page you deliver to the user) they try the article "Cats and Dogs"
+instead.
 
-When you finally have some spare time, you notice that article #4 "Dogs and Cats" is broken (via the urldammit report) but has been superceded by article #8, "Cats and Dogs", so you manually link the two in urldammit by telling it #4 has been moved permanently (301) from http://example.com/articles/4 to http://example.com/articles/8. Now, for the next request to http://example.com/articles/4, the 404 handler kicks in and reports to urldammit, which replies that it now knows the page has been permanently moved to http://example.com/articles/8, so you serve a redirect in the response to the browser.
+When you finally have some spare time, you notice that article #4
+"Dogs and Cats" is broken (via the urldammit report) but has been
+superceded by article #8, "Cats and Dogs", so you manually link the
+two in urldammit by telling it #4 has been moved permanently (301)
+from http://example.com/articles/4 to http://example.com/articles/8.
+Now, for the next request to http://example.com/articles/4, the 404
+handler kicks in and reports to urldammit, which replies that it
+now knows the page has been permanently moved to
+http://example.com/articles/8, so you serve a redirect in the
+response to the browser.
 
