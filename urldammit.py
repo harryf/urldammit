@@ -3,7 +3,7 @@
 import web
 import urllib2
 import logging
-from dammit.couchutils import uri_to_id, put
+from dammit.couchutils import uri_to_id, put, delete
 from dammit.resource import *
 from dammit.lrucache import LRUCache
 from couchdb import Database
@@ -93,6 +93,8 @@ class urldammit:
         i = web.input()
         uri = self._reqd(i, 'uri')
         if not uri: return
+
+        delete(db, id)
         return
 
     def _locate(self, uri):

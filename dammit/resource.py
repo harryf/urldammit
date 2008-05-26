@@ -39,6 +39,10 @@ def equal(a, b):
 
 def expand_dict(d):
     items = []
+
+    if not type(d) == dict:
+        return items
+    
     for k, v in d.items():
         items.append({'k':k, 'v':v})
 
@@ -67,11 +71,21 @@ def register_uri(db, uri, status = 200, **kwargs):
         kwargs['status'] = status
 
         if kwargs.has_key('pairs'):
-            kwargs['pairs'] = expand_dict(kwargs['pairs'])    
+            kwargs['pairs'] = expand_dict(kwargs['pairs'])
         now = datetime.now()
         updated = False
-        
+
+        ignore = ()
+        if 400 <= status < 500:
+            ignore = ('tags','pairs')
+
+        logging.debug(ignore)
         for k, v in kwargs.items():
+            logging.debug("k: %s, v: %s" % ( k, v) )
+            if k in ignore:
+                logging.debug("ignoring %s", k)
+                continue
+            
             try:
                 if not equal(v, getattr(r, k)):
                     setattr(r, k, v)

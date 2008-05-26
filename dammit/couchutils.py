@@ -18,6 +18,12 @@ def put(database, document):
 
     database.resource.put(document.id, content = data)
 
+def delete(database, id):
+    """
+    delete a doc from the db
+    """
+    database.resource.delete(id)
+
 def uri_to_id(uri):
     """
     SHA-1 the URI's so couchdb can handle them
