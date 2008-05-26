@@ -47,7 +47,7 @@ def unpack_pairs(s):
             next
         if not is_scalar(v):
             next
-        out[k] = [v]
+        out[k] = v
 
     return out
 
