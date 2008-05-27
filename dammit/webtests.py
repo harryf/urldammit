@@ -18,6 +18,7 @@ def run(url = "http://localhost:8080"):
         'status': '200',
         }
 
+    http = httplib2.Http()
     http.follow_redirects = False
     response, content = http.request(
         url, 'POST', headers=headers, body=urllib.urlencode(body)
@@ -25,20 +26,35 @@ def run(url = "http://localhost:8080"):
     assert response['status'] == '303'
     assert 'http://foobar.com/1.html' in content
 
-    http.follow_redirects = True
+    http = httplib2.Http()
     response, content = http.request(
         url, 'POST', headers=headers, body=urllib.urlencode(body)
         )
     assert response['status'] == '200'
     assert 'http://foobar.com/1.html' in content
 
+    http = httplib2.Http()
     body['tags'] = '["foo","bar"]'
+    body['uri'] = 'http://foobar.com/2.html'
     response, content = http.request(
         url, 'POST', headers=headers, body=urllib.urlencode(body)
         )
-    print response
     assert response['status'] == '200'
-    assert '["foo","bar"]' in content
+    print content
+    assert '["foo", "bar"]' in content
+
+    http = httplib2.Http()
+    body['tags'] = '["abc","xyz"]'
+    body['uri'] = 'http://foobar.com/2.html'
+    response, content = http.request(
+        url, 'POST', headers=headers, body=urllib.urlencode(body)
+        )
+    assert response['status'] == '200'
+    assert '["abc", "xyz"]' in content
+
+    http = httplib2.Http()
+    response, content = http.request(url, 'DELETE')
+    print response
 
     
     

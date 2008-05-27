@@ -192,5 +192,6 @@ if __name__ == '__main__':
         import dammit.webtests
         dammit.webtests.run()
     else:
+        web.webapi.internalerror = web.debugerror
         web.run(urls, globals() )
 
