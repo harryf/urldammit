@@ -185,7 +185,12 @@ class tools:
         print '</form>'
 
 if __name__ == '__main__':
-    import logging
+    import logging, sys
     logging.basicConfig(level=logging.DEBUG)
-    web.run(urls, globals() )
+
+    if len(sys.argv) > 1 and sys.argv[1] == "webtest":
+        import dammit.webtests
+        dammit.webtests.run()
+    else:
+        web.run(urls, globals() )
 
