@@ -4,6 +4,7 @@ status = {
     200: '200 OK',
     201: '201 Created',
     202: '202 Accepted',
+    204: '204 No Content',
     300: '300 Multiple Choices',
     301: '301 Moved Permanently',
     302: '302 Found',

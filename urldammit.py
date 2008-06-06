@@ -95,7 +95,7 @@ class urldammit:
         if not uri: return
 
         delete(db, id)
-        return
+        web.ctx.status = status[204]
 
     def _locate(self, uri):
         """
