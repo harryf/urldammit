@@ -9,11 +9,15 @@ from dammit.lrucache import LRUCache
 from couchdb import Database
 from dammit.http import status
 from dammit.request import unpack_tags, unpack_pairs, pack_response
+import view
+from view import render
 
 urls = (
     '/', 'urldammit',
     '/_tools', 'tools',
-    '/(.*)', 'urldammit',
+    '/_tools/addurl', 'tools_addurl',
+    '/_tools/checkurl', 'tools_checkurl',
+    '/([0-9a-f]{40})', 'urldammit',
     )
 
 db = Database('http://localhost:5984/urldammit')
@@ -37,7 +41,7 @@ class urldammit:
         if not uri:
             print "where's my url dammit?"
             return
-        
+
         r = self._locate(uri)
         
         if not r: return
@@ -84,45 +88,55 @@ class urldammit:
         
         r = register_uri(db, uri = uri, status = int(status),\
                          tags = tags, pairs = pairs )
-        if r: known[id] = r
-        web.http.seeother("%s/%s" % ( web.ctx.home, urllib2.quote(i.uri)) )
+
+        id = uri_to_id(i.uri)
+        if r:
+            known[id] = r
+            web.http.seeother(
+                "%s/%s" % ( web.ctx.home, id)
+                )
         self._render(r)
             
         
-    def DELETE(self):
-        i = web.input()
-        uri = self._reqd(i, 'uri')
-        if not uri: return
+    def DELETE(self, uri):
+        """
+        TODO: take the uri as a param
+        currently very broken...
+        """
+        logging.debug("got a delete request")
 
-        delete(db, id)
+        try:
+            delete(db, uri)
+        except Exception, e:
+            logging.error(e)
+        
         web.ctx.status = status[204]
 
     def _locate(self, uri):
         """
         See what we know about this uri...
+        uri is in fact a SHA-1 hash of the uri
         """
-        id = uri_to_id(uri)
-
         def ithas(key, cache):
             if key in cache:
                 return cache[key]
             return None
 
-        u = ithas(id, unknown)
+        u = ithas(uri, unknown)
         if u:
             web.notfound()
             return None
 
-        r = ithas(id, known)
+        r = ithas(uri, known)
         if not r:
-            r = URI.load(db, id)
+            r = URI.load(db, uri)
             
             if not r:
-                unknown[id] = True
+                unknown[uri] = True
                 web.notfound()
                 return None
             
-            known[id] = r
+            known[uri] = r
         
         return r
 
@@ -138,7 +152,10 @@ class urldammit:
         if 300 <= r.status < 400:
             if r.status in status:
                 web.ctx.status = status[r.status]
-                web.header('Location', r.location)
+                web.header(
+                    'Location',
+                    "%s/%s" % ( web.ctx.home, uri_to_id(r.location) )
+                    )
                 return True
         return False
 
@@ -176,13 +193,15 @@ class urldammit:
 
 class tools:
     def GET(self):
-        print '<form action="/" method="POST">'
-        print '<label for="uri">uri:</label><input name="uri" type="text"><br>'
-        print '<label for="status">status:</label><input name="status" type="text"><br>'
-        print '<label for="tags">tags:</label><input name="tags" type="text"><br>'
-        print '<label for="pairs">pairs:</label><input name="pairs" type="text"><br>'
-        print '<input type="submit" value="submit">'
-        print '</form>'
+        print render.base(view.tools())
+
+class tools_addurl:
+    def GET(self):
+        print render.base(view.addurl())
+
+class tools_checkurl:
+    def GET(self):
+        print render.base(view.checkurl())
 
 if __name__ == '__main__':
     import logging, sys
