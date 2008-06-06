@@ -3,14 +3,16 @@
 import web
 import urllib2
 import logging
+import re
 from dammit.couchutils import uri_to_id, put, delete
 from dammit.resource import *
 from dammit.lrucache import LRUCache
 from couchdb import Database
-from dammit.http import status
+from dammit.http import statusmap
 from dammit.request import unpack_tags, unpack_pairs, pack_response
 import view
 from view import render
+import config
 
 urls = (
     '/', 'urldammit',
@@ -20,14 +22,14 @@ urls = (
     '/([0-9a-f]{40})', 'urldammit',
     )
 
-db = Database('http://localhost:5984/urldammit')
+db = Database(config.DBURL)
 
 # cache URIs we know about
-known = LRUCache(1000)
+known = LRUCache(config.KNOWN_CACHE_SIZE)
 
 # cache queries we know nothing about otherwise
 # we have to ask couch each time
-unknown = LRUCache(100)
+unknown = LRUCache(config.UNKNOWN_CACHE_SIZE)
 
 class urldammit:
     
@@ -50,6 +52,11 @@ class urldammit:
         self._ok(r)
         self._render(r)
 
+    validstatus = re.compile("^[1-5][0-9]{2}$")
+    
+    def PUT(self, uri):
+        pass
+
     def POST(self):
         """
         Update couch with status of uri
@@ -60,8 +67,17 @@ class urldammit:
         if uri is None: return
 
         status = self._reqd(i, 'status')
-        if status is None: return
-        # todo validate numeric
+
+        # status not supplied? acts as a DELETE
+        # (i.e. allow delete via HTML form)
+        if status is None or status == "":
+            logging.debug("proxy delete via post")
+            self.DELETE(uri)
+            return
+
+        if not self.validstatus.match(status):
+            self._badrequest("Bad value for status: '%s'" % status)
+            return
 
         try:
             logging.debug('tags: %s', i.tags)
@@ -99,18 +115,16 @@ class urldammit:
             
         
     def DELETE(self, uri):
-        """
-        TODO: take the uri as a param
-        currently very broken...
-        """
-        logging.debug("got a delete request")
-
         try:
             delete(db, uri)
         except Exception, e:
+            """
+            couchdb issue... (doesn't actually delete)
+            'Document rev/etag must be specified to delete'
+            """
             logging.error(e)
         
-        web.ctx.status = status[204]
+        web.ctx.status = statusmap[204]
 
     def _locate(self, uri):
         """
@@ -141,7 +155,7 @@ class urldammit:
         return r
 
     def _ok(self, r):
-        web.ctx.status = status[200]
+        web.ctx.status = statusmap[200]
         web.http.lastmodified(r.updated)
 
     def _redirect(self, r):
@@ -151,7 +165,7 @@ class urldammit:
         """
         if 300 <= r.status < 400:
             if r.status in status:
-                web.ctx.status = status[r.status]
+                web.ctx.status = statusmap[r.status]
                 web.header(
                     'Location',
                     "%s/%s" % ( web.ctx.home, uri_to_id(r.location) )
@@ -164,7 +178,7 @@ class urldammit:
         try:
             val = getattr(input,key)
         except AttributeError:
-            web.ctx.status = status[406]
+            web.ctx.status = statusmap[406]
             print "%s parameter required" % input
         return val
 
@@ -190,6 +204,10 @@ class urldammit:
 
         print pack_response(response)
 
+    def _badrequest(self, msg):
+        web.ctx.status = statusmap[400]
+        print view.badrequest(reason = msg)
+        
 
 class tools:
     def GET(self):

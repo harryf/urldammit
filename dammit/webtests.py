@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import urllib, httplib2, unittest
+import urllib, httplib2, unittest, sys
 
 class WebTests(unittest.TestCase):
 
@@ -9,7 +9,7 @@ class WebTests(unittest.TestCase):
         self.url = 'http://localhost:8080'
         self.headers = {'Content-type': 'application/x-www-form-urlencoded'}
         self.body = {
-            'uri': 'http://foobar.com/1.html',
+            'uri': 'http://foobar.com/setup.html',
             'status': '200',
             }
 
@@ -30,12 +30,19 @@ class WebTests(unittest.TestCase):
 
 
     def test404(self):
-        response, content = self.http.request("%s/test1234" % self.url, 'GET')
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                           % sys._getframe().f_code.co_name
+        response, content = self.http.request(
+            "%s/test1234" % self.url, 'GET'
+            )
         self.assert_(response['status'] == '404')
 
 
     def test303(self):
-        # test the direct response to a POST, without following the redirect
+        # test the direct response to a POST
+        # without following the redirect
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                           % sys._getframe().f_code.co_name
         self.http.follow_redirects = False
         response, content = self._post()
         self.assert_( response['status'] == '303' )
@@ -43,37 +50,101 @@ class WebTests(unittest.TestCase):
 
 
     def testPOST(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                           % sys._getframe().f_code.co_name
         response, content = self._post()
         self.assert_(response['status'] == '200')
         self.assert_( self.body['uri'] in content )
 
     def testTags(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                           % sys._getframe().f_code.co_name
         self.body['tags'] = '["foo","bar"]'
-        self.body['uri'] = 'http://foobar.com/2.html'
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )        
         self.assert_( '["foo", "bar"]' in content )
 
-    def testMoreTags(self):
+    def testTagChange(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                           % sys._getframe().f_code.co_name
+        
+        self.body['tags'] = '["foo","bar"]'
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( self.body['uri'] in content )        
+        self.assert_( '["foo", "bar"]' in content )
+
+        self._init_http()
         self.body['tags'] = '["abc","xyz"]'
-        self.body['uri'] = 'http://foobar.com/2.html'
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )
         self.assert_( '["abc", "xyz"]' in content )
     
     def testDELETE(self):
-        self.body['uri'] = 'http://foobar.com/deleteme.html'
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                        % sys._getframe().f_code.co_name
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( self.body['uri'] in content )
+
+        uri = response['content-location']
+        
+        self._init_http()
+        response, content = self.http.request(
+            uri, 'DELETE'
+            )
+        self.assert_( response['status'] == '204' )
+
+        self._init_http()
+        response, content = self.http.request(
+            uri, 'GET'
+            )
+        self.assert_( response['status'] == 404 )
+
+    def testDeleteViaPost(self):
+        # with empty value in status field, record is deleted
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                        % sys._getframe().f_code.co_name        
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( self.body['uri'] in content )
+
+        uri = response['content-location']
+        
+        self._init_http()
+        self.body['status'] = ''
+        response, content = self._post()
+        self.assert_( response['status'] == '204' )
+        
+        self._init_http()
+        response, content = self.http.request(
+            uri, 'GET'
+            )
+        self.assert_( response['status'] == 404 )
+
+    def testHEAD(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                        % sys._getframe().f_code.co_name
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )
         
         self._init_http()
         response, content = self.http.request(
-            response['content-location'], 'DELETE'
+            response['content-location'], 'HEAD'
             )
-        self.assert_( response['status'] == '204' )
+        self.assert_( response['status'] == '200' )
+        self.assert_( content.strip() == '' )
+
+    def testBadrequest(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                        % sys._getframe().f_code.co_name
+        self.body['status'] = 'abc'
+        response, content = self._post()
+        self.assert_( response['status'] == '400' )
+    
 
 if __name__ == '__main__':
     unittest.main()

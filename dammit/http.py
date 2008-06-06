@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-status = {
+statusmap = {
     200: '200 OK',
     201: '201 Created',
     202: '202 Accepted',
@@ -13,5 +13,6 @@ status = {
     305: '305 Use Proxy',
     306: '305 Switch Proxy',
     307: '307 Temporary Redirect',
+    400: '400 Bad Request',
     404: '404 Not Found',
     }
