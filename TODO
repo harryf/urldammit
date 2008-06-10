@@ -1,0 +1,4 @@
+url parsing ( query params? )
+for PUT - validate sha-1 vs. POSTed url
+PUT
+db abstraction
