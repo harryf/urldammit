@@ -116,7 +116,10 @@ class urldammit:
         
     def DELETE(self, uri):
         try:
-            delete(db, uri)
+            u = URI.load(db, uri_to_id(uri))
+            if not u:
+                logging.warn("DELETE called for id %s - not found" % uri)
+            db.resource.delete(db, uri, u.rev)
         except Exception, e:
             """
             couchdb issue... (doesn't actually delete)

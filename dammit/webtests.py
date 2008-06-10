@@ -95,13 +95,14 @@ class WebTests(unittest.TestCase):
         response, content = self.http.request(
             uri, 'DELETE'
             )
+
         self.assert_( response['status'] == '204' )
 
         self._init_http()
         response, content = self.http.request(
             uri, 'GET'
             )
-        self.assert_( response['status'] == 404 )
+        self.assert_( response['status'] == '404' )
 
     def testDeleteViaPost(self):
         # with empty value in status field, record is deleted
@@ -122,7 +123,7 @@ class WebTests(unittest.TestCase):
         response, content = self.http.request(
             uri, 'GET'
             )
-        self.assert_( response['status'] == 404 )
+        self.assert_( response['status'] == '404' )
 
     def testHEAD(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\

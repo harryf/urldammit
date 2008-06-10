@@ -18,11 +18,11 @@ def put(database, document):
 
     database.resource.put(document.id, content = data)
 
-def delete(database, id):
+def delete(database, id, rev):
     """
     delete a doc from the db
     """
-    database.resource.delete(id)
+    database.resource.delete(id, rev)
 
 def uri_to_id(uri):
     """

@@ -4,6 +4,7 @@ import re
 from couchdb.schema import *
 from datetime import datetime
 from dammit.couchutils import *
+from dammit.couchutils import uri_to_id
 import logging
 
 alphanum = re.compile('^[a-zA-Z0-9]$')
