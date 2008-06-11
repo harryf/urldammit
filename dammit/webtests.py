@@ -50,6 +50,7 @@ class WebTests(unittest.TestCase):
 
 
     def testPOST(self):
+        # TODO test updated time
         self.body['uri'] = 'http://foobar.com/%s.html'\
                            % sys._getframe().f_code.co_name
         response, content = self._post()
@@ -57,6 +58,7 @@ class WebTests(unittest.TestCase):
         self.assert_( self.body['uri'] in content )
 
     def testTags(self):
+        # TODO test updated time
         self.body['uri'] = 'http://foobar.com/%s.html'\
                            % sys._getframe().f_code.co_name
         self.body['tags'] = '["foo","bar"]'
@@ -66,6 +68,7 @@ class WebTests(unittest.TestCase):
         self.assert_( '["foo", "bar"]' in content )
 
     def testTagChange(self):
+        # TODO test updated time!
         self.body['uri'] = 'http://foobar.com/%s.html'\
                            % sys._getframe().f_code.co_name
         

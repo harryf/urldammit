@@ -63,6 +63,9 @@ class URI(object):
         >>> u.uri = "http://local.ch"
         >>> u.id == URI.hash(u.uri)
         True
+        >>> u.uri = "http://local.ch/new"
+        Traceback (most recent call last):
+        AttributeError: property 'uri' is immutable
         """
         def fget(self):
             return self._uri
@@ -81,6 +84,11 @@ class URI(object):
         if it's new but the new uri if it's been
         moved
         >>> u = URI()
+        >>> u.status = 200
+        >>> u.location = "http://local.ch/new"
+        Traceback (most recent call last):
+        AttributeError: Cannot set property location unless status is 301 (not 200)
+        >>> u.status = 301
         >>> u.location = "http://local.ch/new"
         >>> u.location == "http://local.ch/new"
         True
@@ -89,6 +97,11 @@ class URI(object):
             return self._location
 
         def fset(self, locn):
+            if not self._status == 301:
+                raise AttributeError(
+                    "Cannot set property location unless status is 301 (not %s)" %\
+                    self._status
+                    )
             self._location = str(locn)
 
     @Property
@@ -207,6 +220,10 @@ class URI(object):
         >>> u = URI()
         >>> u.tags = "foo"
         Traceback (most recent call last):
+        AttributeError: Can only modify tags while status is 200 (not None)
+        >>> u.status = 200
+        >>> u.tags = "foo"
+        Traceback (most recent call last):
         TypeError: tags must be a list not <type 'str'>
         >>> u.tags = ['foo', 'bar']
         >>> u.tags
@@ -219,6 +236,8 @@ class URI(object):
             return self._tags
 
         def fset(self, keywords):
+            if self._status != 200:
+                raise AttributeError("Can only modify tags while status is 200 (not %s)" % self._status)
             if not type(keywords) == list:
                 raise TypeError("tags must be a list not %s" % type(keywords))
             for tag in keywords:
@@ -236,6 +255,10 @@ class URI(object):
         Keys must obey =~ /^[a-zA-Z0-9]{1,20}$/
         Values must be strings, not be longer than 100 bytes
         >>> u = URI()
+        >>> u.pairs = "foo"
+        Traceback (most recent call last):
+        AttributeError: Can only modify pairs while status is 200 (not None)
+        >>> u.status = 200
         >>> u.pairs = "foo"
         Traceback (most recent call last):
         TypeError: pairs must be a dictionary not <type 'str'>
@@ -256,6 +279,9 @@ class URI(object):
             return self._pairs
 
         def fset(self, mapping):
+            if self._status != 200:
+                raise AttributeError("Can only modify pairs while status is 200 (not %s)" % self._status)
+
             if not type(mapping) == dict:
                 raise TypeError("pairs must be a dictionary not %s" % type(mapping))
 
@@ -270,6 +296,54 @@ class URI(object):
                     raise ValueError("Value for key '%s' too large at %s bytes" % (k, len(v)))
                                      
             self._pairs = mapping
+
+    def is_found(self):
+        """
+        Whether this is a HTTP status 200 resource
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.is_found()
+        True
+        >>> u.status = 404
+        >>> u.is_found()
+        False
+        """
+        return 200 <= self.status < 300
+
+    def is_notfound(self):
+        """
+        Whether this is a HTTP status 404 resource
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.status = 404
+        >>> u.is_notfound()
+        True
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.is_notfound()
+        False
+        """
+        return 400 <= self.status < 500
+
+    def is_redirected(self):
+        """
+        Whether this is a HTTP status 301
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.status = 301
+        >>> u.status
+        301
+        >>> u.is_redirected()
+        True
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.is_redirected()
+        False
+        """
+        return 300 <= self.status < 400
 
 class GuardedURI(URI):
     """
@@ -321,6 +395,73 @@ class GuardedURI(URI):
                 raise ValueError("Status %s not supported" % code)
 
             self._status = code
+
+def URIManager(object):
+
+    def __init__(self, db):
+        self.db = db
+
+    def load(self, id):
+        return self.db.load(id)
+
+    def register(self, uri, status = 200, **kwargs):
+
+        id = URI.hash(uri)
+
+        logging.debug("Looking for URI '%s' with id %s" % ( uri, id ))
+        
+        u = self.db.load(id)
+
+        if u:
+            logging.debug("Found URI %s [%s]" % (u.uri, u.id))
+            
+            if u.is_redirected():
+                logging.warn("URI %s is redirected to %s - i.e. it's immutable" % (u.uri, u.location))
+                return u
+
+        else:
+            if 200 <= status < 300:
+                u = URI()
+            else:
+                logging.warn("Nothing known about %s - status is %s - ignoring" % (uri, status))
+                return False
+        
+        kwargs['status'] = status
+        allowedargs = ('status', 'uri', 'location', 'tags', 'pairs')
+
+        now = datetime.now()
+        updated = False
+
+        for k, v in kwargs.items():
+            if not k in allowedargs:
+                continue
+            try:
+                if not equal(getattr(u, k), v):
+                    setattr(u, k, v)
+                    updated = True
+            except Exception, e:
+                logging.debug(e)
+
+        if not u.updated or updated:
+            u.updated = now
+
+        if not u.created:
+            u.created = now
+            
+        return u
+
+def equal(a, b):
+    """
+    equality to handle quirks of python-couchdb Document
+    objects
+    """
+    logging.debug("Comparing %s with %s" % ( a, b ))
+    if type(a) == list:
+        return tuple(sorted(a)) == tuple(sorted(b))
+    if type(a) == dict:
+        return tuple([(k, a[k]) for k in sorted(a.keys())])\
+               == tuple([(k, b[k]) for k in sorted(b.keys())])
+    return a == b
 
 
 def _test():
