@@ -46,7 +46,6 @@ class urldammit(object):
         u = self._locate(id)
         
         if not u:
-            web.notfound()
             return
         
         if self._redirect(u):
@@ -194,10 +193,19 @@ class find(object):
     To help clients find "reduced" urls
     """
     def GET(self, url):
+        reduceurl = True
+        try:
+            reduceurl = getattr(i, 'reduceurl').lower() != 'false'
+        except:
+            pass
+
+        if reduceurl:
+            url = reduce_url(url)
+        
         web.ctx.status = statusmap[303]
         web.header(
             'Location',
-            "%s/%s" % ( web.ctx.home, URI.hash(reduce_url(url)) )
+            "%s/%s" % ( web.ctx.home, URI.hash(url) )
             )
         return
 
