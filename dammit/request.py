@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging, simplejson
+import logging
+from urlparse import urlsplit, urlunsplit
 from types import *
+import simplejson
 
 def is_scalar(i):
     scalars = (NoneType, BooleanType, IntType, LongType,
@@ -88,10 +90,6 @@ def pack_response(u):
         logging.error("Can't dump '%s'" % d)
         return ''
 
-def _test():
-    import doctest
-    doctest.testmod()
-
 statusmap = {
     200: '200 OK',
     201: '201 Created',
@@ -109,6 +107,24 @@ statusmap = {
     404: '404 Not Found',
     }
 
+def reduce_url(url):
+    """
+    for a URL like http://example.com/page.html?foo=bar
+    we only want the 'http://example.com/page.html'
+    by default
+
+    >>> print reduce_url('http://example.com/page.html?foo=bar')
+    http://example.com/page.html
+    >>> print reduce_url('http://example.com/')
+    http://example.com/
+    >>> print reduce_url('http://example.com')
+    http://example.com
+    """
+    return urlunsplit(urlsplit(url)[0:3]+('',''))
+
+def _test():
+    import doctest
+    doctest.testmod()
 
 if __name__ == '__main__':
     _test()

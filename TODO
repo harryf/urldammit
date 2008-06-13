@@ -1,4 +1,12 @@
 url parsing ( query params? )
-for PUT - validate sha-1 vs. POSTed url
 PUT
-db abstraction
+GET via URL ( a search function - pass URI, redirect to SHA-1)
+access control on senstive HTTP operations e.g. DELETE
+db implementations:
+ - couchdb (dropping couchdb-python)
+ - mysql
+ - hbase
+ - solr?
+
+
+

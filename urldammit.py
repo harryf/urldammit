@@ -17,6 +17,7 @@ urls = (
     '/_tools/addurl', 'tools_addurl',
     '/_tools/checkurl', 'tools_checkurl',
     '/([0-9a-f]{40})', 'urldammit',
+    '/find/(.*)', 'find',
     )
 
 db = MockDB()
@@ -29,7 +30,7 @@ known = LRUCache(config.KNOWN_CACHE_SIZE)
 # we have to ask couch each time
 unknown = LRUCache(config.UNKNOWN_CACHE_SIZE)
 
-class urldammit:
+class urldammit(object):
     
     def HEAD(self, id):
         u = self._locate(id)
@@ -37,12 +38,12 @@ class urldammit:
         if self._redirect(u): return
         self._ok(u)
         
-    def GET(self, uri = None):
-        if not uri:
+    def GET(self, id = None):
+        if not id:
             print "where's my url dammit?"
             return
 
-        u = self._locate(uri)
+        u = self._locate(id)
         
         if not u:
             web.notfound()
@@ -76,6 +77,14 @@ class urldammit:
 
         uri = required(i, 'uri')
         if uri is None: return
+
+        reduceurl = True
+        try:
+            reduceurl = getattr(i, 'reduceurl').lower() != 'false'
+        except:
+            pass
+        
+        uri = reduce_url(uri)
 
         # allow an explicit delete using a delete
         # parameter (i.e. allow delete via HTML form)
@@ -179,7 +188,18 @@ class urldammit:
     def _badrequest(self, msg):
         web.ctx.status = statusmap[400]
         print view.badrequest(reason = msg)
-        
+
+class find(object):
+    """
+    To help clients find "reduced" urls
+    """
+    def GET(self, url):
+        web.ctx.status = statusmap[303]
+        web.header(
+            'Location',
+            "%s/%s" % ( web.ctx.home, URI.hash(reduce_url(url)) )
+            )
+        return
 
 class tools:
     def GET(self):

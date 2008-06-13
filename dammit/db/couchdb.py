@@ -11,6 +11,21 @@ class CouchDB(object):
         """
         pass
 
+    def insert(self, uri):
+        pass
+
+    def update(self, uri):
+        pass
+
+    def delete(self, id):
+        pass
+
+    def bootstrap(self, **kwargs):
+        pass
+
+    def purge(self, **kwargs):
+        pass
+
 
 def expand_dict(d):
     """
