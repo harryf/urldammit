@@ -485,47 +485,55 @@ class URIManager(object):
         id = URI.hash(uri)
 
         u = self.db.load(id)
+        newrecord = True
 
         if u:
             if u.is_redirected():
                 # 301 is immutable - can return straight away
                 return u
-
+            newrecord = False
         else:
             if 200 <= status < 300:
                 u = URI()
             else:
                 return None
 
-        # need to set status before location
-        try:
-            u.status = status
-        except:
-            pass
+        def apply_attribute(uri, key, value):
+            updated = False
+            try:
+                if not getattr(uri, key) == value:
+                    setattr(uri, key, value)
+                    updated = True
+            except:
+                pass
+            return updated
+            
 
-        kwargs['uri'] = uri
-        allowedargs = ('uri', 'location', 'tags', 'pairs')
-
-        now = datetime.datetime.now()
         updated = False
 
-        for k, v in kwargs.items():
-            if not k in allowedargs:
-                continue
-            try:
-                if not getattr(u, k) == v:
-                    setattr(u, k, v)
-                    updated = True
-            except Exception, e:
-                pass
+        # need to set status before location
+        updated = updated | apply_attribute(u, 'status', status)
 
-        if not u.updated or updated:
-            u.updated = now
 
-        if not u.created:
+        kwargs['uri'] = uri
+        kwargs['status'] = status
+        attrs = ('uri', 'status', 'location', 'tags', 'pairs')
+
+
+        for k in attrs:
+            if k in kwargs:
+                updated = updated | apply_attribute(u, k, kwargs[k])
+
+        now = datetime.datetime.now()
+
+        if newrecord:
             u.created = now
-
-        self.db.store(u)
+            u.updated = now
+            self.db.insert(u)
+        else:
+            if updated:
+                u.updated = now
+                self.db.update(u)
             
         return u
 

@@ -3,13 +3,14 @@
 class MockDB(object):
     def __init__(self):
         self.uris = {}
-        self.stored = []
 
     def load(self, id):
         return self.uris.get(id, None)
 
-    def store(self, uri):
-        self.stored.append(uri)
+    def insert(self, uri):
+        self.uris[uri.id] = uri
+
+    def update(self, uri):
         self.uris[uri.id] = uri
 
     def delete(self, id):
