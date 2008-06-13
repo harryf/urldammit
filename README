@@ -62,5 +62,6 @@ now knows the page has been permanently moved to
 http://example.com/articles/8, so you serve a redirect in the
 response to the browser.
 
-API
+Installing
 
+Requires web.py and simplejson. Tested on python 2.5

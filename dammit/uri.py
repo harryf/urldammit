@@ -396,6 +396,9 @@ class GuardedURI(URI):
 
             self._status = code
 
+class URIError(Exception):
+    pass
+
 class URIManager(object):
     """
     Layer between the HTTP frontend and the backend
@@ -433,7 +436,8 @@ class URIManager(object):
         >>> um = URIManager(db)
         >>> print um.register('http://local.ch/test1.html', \
         status = 404)
-        None
+        Traceback (most recent call last):
+        URIError: Cannot store 'http://local.ch/test1.html' with status '404': no status 200 record found
         >>> u = um.register('http://local.ch/test1.html', \
         tags = ['a','b'])
         >>> u.uri == "http://local.ch/test1.html"
@@ -496,7 +500,8 @@ class URIManager(object):
             if 200 <= status < 300:
                 u = URI()
             else:
-                return None
+                msg = "Cannot store '%s' with status '%s': no status 200 record found" % ( uri, status )
+                raise URIError(msg)
 
         def apply_attribute(uri, key, value):
             updated = False

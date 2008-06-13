@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import web
-import urllib2
-import logging
-import re
-from dammit.couchutils import uri_to_id, put, delete
-from dammit.resource import *
+import urllib2, logging, re
+import web # web.py
 from dammit.lrucache import LRUCache
-from couchdb import Database
-from dammit.http import statusmap
-from dammit.request import unpack_tags, unpack_pairs, pack_response
+from dammit.request import *
+from dammit.uri import *
+from dammit.db.mock import MockDB
+
 import view
 from view import render
 import config
@@ -22,7 +19,8 @@ urls = (
     '/([0-9a-f]{40})', 'urldammit',
     )
 
-db = Database(config.DBURL)
+db = MockDB()
+manager = URIManager(db)
 
 # cache URIs we know about
 known = LRUCache(config.KNOWN_CACHE_SIZE)
@@ -33,26 +31,30 @@ unknown = LRUCache(config.UNKNOWN_CACHE_SIZE)
 
 class urldammit:
     
-    def HEAD(self, uri):
-        r = self._locate(uri)
-        if not r: return
-        if self._redirect(r): return
-        self._ok(r)
+    def HEAD(self, id):
+        u = self._locate(id)
+        if not u: return
+        if self._redirect(u): return
+        self._ok(u)
         
     def GET(self, uri = None):
         if not uri:
             print "where's my url dammit?"
             return
 
-        r = self._locate(uri)
+        u = self._locate(uri)
         
-        if not r: return
-        if self._redirect(r): return
+        if not u:
+            web.notfound()
+            return
+        
+        if self._redirect(u):
+            return
 
-        self._ok(r)
-        self._render(r)
+        self._ok(u)
+        self._render(u)
 
-    validstatus = re.compile("^[1-5][0-9]{2}$")
+    validstatus = re.compile("^200|301|404$")
     
     def PUT(self, uri):
         pass
@@ -61,75 +63,69 @@ class urldammit:
         """
         Update couch with status of uri
         """
+        def required(input, key):
+            val = None
+            try:
+                val = getattr(input, key)
+            except AttributeError:
+                web.ctx.status = statusmap[406]
+                print "%s parameter required" % key
+            return val
+        
         i = web.input()
 
-        uri = self._reqd(i, 'uri')
+        uri = required(i, 'uri')
         if uri is None: return
 
-        status = self._reqd(i, 'status')
+        # allow an explicit delete using a delete
+        # parameter (i.e. allow delete via HTML form)
+        try:
+            delete = getattr(i, 'delete')
+            if delete == 'true':
+                self.DELETE(URI.hash(uri))
+                return
+        except:
+            pass
 
-        # status not supplied? acts as a DELETE
-        # (i.e. allow delete via HTML form)
-        if status is None or status == "":
-            logging.debug("proxy delete via post")
-            self.DELETE(uri)
-            return
+        # if it's not a delete, we require a status
+        status = required(i, 'status')
+        if status is None: return
 
         if not self.validstatus.match(status):
             self._badrequest("Bad value for status: '%s'" % status)
             return
 
-        try:
-            logging.debug('tags: %s', i.tags)
-        except:
-            logging.debug('tags not found')
-
-        tags = getattr(i, 'tags', [])
-        if tags:
-            tags = unpack_tags(tags)
-
-        logging.debug('tags unpacked: %s', tags)
+        tags = unpack_tags(getattr(i, 'tags', []))
+        pairs = unpack_pairs(getattr(i, 'pairs', []))
+        location = getattr(i, 'location', [])
 
         try:
-            logging.debug('pairs: %s', i.tags)
-        except:
-            logging.debug('pairs not found')
-        
-        pairs = getattr(i, 'pairs', [])
-        logging.debug(pairs)
-        if pairs:
-            pairs = unpack_pairs(pairs)
-
-        logging.debug('pairs unpacked: %s', pairs)
-        
-        r = register_uri(db, uri = uri, status = int(status),\
-                         tags = tags, pairs = pairs )
-
-        id = uri_to_id(i.uri)
-        if r:
-            known[id] = r
-            web.http.seeother(
-                "%s/%s" % ( web.ctx.home, id)
+            u = manager.register(
+                uri,
+                int(status),
+                tags = tags,
+                pairs = pairs,
+                location = location
                 )
-        self._render(r)
+
+            known[u.id] = u
+            if u.id in unknown: del unknown[u.id]
+            
+            web.http.seeother(
+                "%s/%s" % ( web.ctx.home, u.id)
+                )
+            self._render(u)
+
+        except URIError, e:
+            self._badrequest(e.message)
             
         
-    def DELETE(self, uri):
-        try:
-            u = URI.load(db, uri_to_id(uri))
-            if not u:
-                logging.warn("DELETE called for id %s - not found" % uri)
-            db.resource.delete(db, uri, u.rev)
-        except Exception, e:
-            """
-            couchdb issue... (doesn't actually delete)
-            'Document rev/etag must be specified to delete'
-            """
-            logging.error(e)
-        
+    def DELETE(self, id):
+        manager.delete(id)
+        if id in known: del known[id]
         web.ctx.status = statusmap[204]
 
-    def _locate(self, uri):
+    def _locate(self, id):
         """
         See what we know about this uri...
         uri is in fact a SHA-1 hash of the uri
@@ -139,73 +135,46 @@ class urldammit:
                 return cache[key]
             return None
 
-        u = ithas(uri, unknown)
+        u = ithas(id, unknown)
         if u:
             web.notfound()
             return None
 
-        r = ithas(uri, known)
-        if not r:
-            r = URI.load(db, uri)
+        u = ithas(id, known)
+        if not u:
+            u = manager.load(id)
             
-            if not r:
-                unknown[uri] = True
+            if not u:
+                unknown[id] = True
                 web.notfound()
                 return None
             
-            known[uri] = r
+            known[id] = u
         
-        return r
+        return u
 
-    def _ok(self, r):
+    def _ok(self, u):
         web.ctx.status = statusmap[200]
-        web.http.lastmodified(r.updated)
+        web.http.lastmodified(u.updated)
 
-    def _redirect(self, r):
+    def _redirect(self, u):
         """
-        couch reports this url is now elsewhere
+        db reports this url is now elsewhere
         return a redirect response
         """
-        if 300 <= r.status < 400:
-            if r.status in status:
-                web.ctx.status = statusmap[r.status]
-                web.header(
-                    'Location',
-                    "%s/%s" % ( web.ctx.home, uri_to_id(r.location) )
-                    )
-                return True
+        if u.status == 301:
+            web.ctx.status = statusmap[u.status]
+            web.header(
+                'Location',
+                "%s/%s" % ( web.ctx.home, URI.hash(u.location) )
+                )
+            return True
+        
         return False
 
-    def _reqd(self, input, key):
-        val = None
-        try:
-            val = getattr(input,key)
-        except AttributeError:
-            web.ctx.status = statusmap[406]
-            print "%s parameter required" % input
-        return val
-
-    def _render(self, r):
-        if not r:
-            return
-        
-        response = {
-            'uri': r.uri,
-            'status': r.status,
-            'created': str(r.created),
-            'updated': str(r.updated),
-            'tags': r.tags,
-            'pairs': r.pairs.list,
-            }
-
-        response['id'] = uri_to_id(r.uri)
-
-        if r.location:
-            response['location'] = r.location
-        else:
-            response['location'] = r.uri
-
-        print pack_response(response)
+    def _render(self, u):
+        if not u: return
+        print pack_response(u)
 
     def _badrequest(self, msg):
         web.ctx.status = statusmap[400]
