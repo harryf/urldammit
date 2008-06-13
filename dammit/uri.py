@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys, datetime, sha, re
+import sys, datetime, sha, re, logging
 
 def Property(function):
     """
@@ -396,78 +396,156 @@ class GuardedURI(URI):
 
             self._status = code
 
-def URIManager(object):
-
+class URIManager(object):
+    """
+    Layer between the HTTP frontend and the backend
+    storage
+    
+    """
     def __init__(self, db):
         self.db = db
 
     def load(self, id):
+        """
+        Load a record given it's ID (SHA-1 form)
+        >>> from db.mock import MockDB
+        >>> db = MockDB()
+        >>> um = URIManager(db)
+        >>> print um.load('foo')
+        None
+
+        >>> u = URI()
+        >>> u.uri = "http://local.ch/test.html"
+        >>> db.uris['test'] = (u)
+        >>> u2 = um.load('test')
+        >>> u2.uri == "http://local.ch/test.html"
+        True
+        """
         return self.db.load(id)
 
     def register(self, uri, status = 200, **kwargs):
+        """
+        Store a record or a URI - handles update vs. insert
+        as well as rules related to state changes
 
+        >>> from db.mock import MockDB
+        >>> db = MockDB()
+        >>> um = URIManager(db)
+        >>> print um.register('http://local.ch/test1.html', \
+        status = 404)
+        None
+        >>> u = um.register('http://local.ch/test1.html', \
+        tags = ['a','b'])
+        >>> u.uri == "http://local.ch/test1.html"
+        True
+        >>> u.status == 200
+        True
+        >>> u.tags == ['a','b']
+        True
+        >>> u2 = um.load(u.id)
+        >>> u2.uri == "http://local.ch/test1.html"
+        True
+        >>> u3 = um.register('http://local.ch/test1.html', \
+        tags = ['b','c'])
+        >>> u3.tags == ['b','c']
+        True
+        >>> u4 = um.register('http://local.ch/test1.html', \
+        status = 404)
+        >>> u4.uri == 'http://local.ch/test1.html'
+        True
+        >>> u4.status == 404
+        True
+        >>> u4.tags == ['b','c']
+        True
+        >>> u5 = um.register('http://local.ch/test1.html', \
+        status = 200, tags = ['d','e'])
+        >>> u5.status == 404
+        True
+        >>> u5.tags == ['b','c']
+        True
+        >>> u6 = um.register('http://local.ch/test1.html', \
+        status = 301, location = 'http://local.ch/test2.html')
+        >>> u6.status == 301
+        True
+        >>> u6.location == 'http://local.ch/test2.html'
+        True
+        >>> u7 = um.register( 'http://local.ch/test3.html', \
+        pairs = {'x':'a','y':'b'})
+        >>> u7.pairs['x'] == 'a'
+        True
+        >>> u7.pairs['y'] == 'b'
+        True
+        >>> u7 = um.register( 'http://local.ch/test4.html', \
+        pairs = {'x':'d','y':'e'})
+        >>> u7.pairs['x'] == 'd'
+        True
+        >>> u7.pairs['y'] == 'e'
+        True
+        """
         id = URI.hash(uri)
 
-        logging.debug("Looking for URI '%s' with id %s" % ( uri, id ))
-        
         u = self.db.load(id)
 
         if u:
-            logging.debug("Found URI %s [%s]" % (u.uri, u.id))
-            
             if u.is_redirected():
-                logging.warn("URI %s is redirected to %s - i.e. it's immutable" % (u.uri, u.location))
+                # 301 is immutable - can return straight away
                 return u
 
         else:
             if 200 <= status < 300:
                 u = URI()
             else:
-                logging.warn("Nothing known about %s - status is %s - ignoring" % (uri, status))
-                return False
-        
-        kwargs['status'] = status
-        allowedargs = ('status', 'uri', 'location', 'tags', 'pairs')
+                return None
 
-        now = datetime.now()
+        # need to set status before location
+        try:
+            u.status = status
+        except:
+            pass
+
+        kwargs['uri'] = uri
+        allowedargs = ('uri', 'location', 'tags', 'pairs')
+
+        now = datetime.datetime.now()
         updated = False
 
         for k, v in kwargs.items():
             if not k in allowedargs:
                 continue
             try:
-                if not equal(getattr(u, k), v):
+                if not getattr(u, k) == v:
                     setattr(u, k, v)
                     updated = True
             except Exception, e:
-                logging.debug(e)
+                pass
 
         if not u.updated or updated:
             u.updated = now
 
         if not u.created:
             u.created = now
+
+        self.db.store(u)
             
         return u
 
-def equal(a, b):
-    """
-    equality to handle quirks of python-couchdb Document
-    objects
-    """
-    logging.debug("Comparing %s with %s" % ( a, b ))
-    if type(a) == list:
-        return tuple(sorted(a)) == tuple(sorted(b))
-    if type(a) == dict:
-        return tuple([(k, a[k]) for k in sorted(a.keys())])\
-               == tuple([(k, b[k]) for k in sorted(b.keys())])
-    return a == b
-
+    def delete(self, id):
+        """
+        >>> from db.mock import MockDB
+        >>> db = MockDB()
+        >>> um = URIManager(db)
+        >>> u = um.register('http://local.ch/delete.html')
+        >>> u.uri == 'http://local.ch/delete.html'
+        True
+        >>> um.delete(u.id)
+        >>> print um.load(u.id)
+        None
+        """
+        self.db.delete(id)
 
 def _test():
     import doctest
     doctest.testmod()
-
 
 if __name__ == '__main__':
     _test()
