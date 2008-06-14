@@ -39,5 +39,3 @@ class MockDB(object):
         Clean up old data
         """
         pass
-5        
-

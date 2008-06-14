@@ -345,6 +345,41 @@ class URI(object):
         """
         return 300 <= self.status < 400
 
+    def data(self):
+        """
+        Returns a dictionary containing the
+        data inside the URI object, omitting
+        the ID
+
+        Intended for db implementations to
+        make it simple to get at the data
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.uri = "http://local.ch"
+        >>> 'uri' in str(u.data())
+        True
+        >>> '200' in str(u.data())
+        True
+        >>> 'id' not in str(u.data())
+        True
+        """
+        items = (slot[1:] for slot in self.__slots__ if slot not in ('_id'))
+        data = {}
+        for item in items:
+            data[item] = getattr(self, "_"+item)
+        return data
+
+    def fieldnames(self):
+        """
+        Returns a list of the field names
+        as helper to db drivers
+        >>> u = URI()
+        >>> 'uri' in str(u.fieldnames())
+        True
+        """
+        return [slot[1:] for slot in self.__slots__ if slot not in ('_id')]
+
 class GuardedURI(URI):
     """
     Prevents setting status 301 or 404 or the location. Intended for use
@@ -411,7 +446,7 @@ class URIManager(object):
     def load(self, id):
         """
         Load a record given it's ID (SHA-1 form)
-        >>> from db.mock import MockDB
+        >>> from db_mock import MockDB
         >>> db = MockDB()
         >>> um = URIManager(db)
         >>> print um.load('foo')
@@ -431,7 +466,7 @@ class URIManager(object):
         Store a record or a URI - handles update vs. insert
         as well as rules related to state changes
 
-        >>> from db.mock import MockDB
+        >>> from db_mock import MockDB
         >>> db = MockDB()
         >>> um = URIManager(db)
         >>> print um.register('http://local.ch/test1.html', \
@@ -544,7 +579,7 @@ class URIManager(object):
 
     def delete(self, id):
         """
-        >>> from db.mock import MockDB
+        >>> from db_mock import MockDB
         >>> db = MockDB()
         >>> um = URIManager(db)
         >>> u = um.register('http://local.ch/delete.html')

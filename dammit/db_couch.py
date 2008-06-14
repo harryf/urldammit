@@ -1,31 +1,63 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-class CouchDB(object):
-    def __init__(self, server):
-        self.server = server
+from couchdb import Server
+from uri import URI
+
+class Couch(object):
+    
+    def __init__(self, config = None):
+        self.config = self._default_config(config)
+        self.server = Server(config['server'])
+        self.bootstrap()
+        self.db = self.server[config['database']]
 
     def load(self, id):
         """
-        if kwargs.has_key('pairs'):
-        kwargs['pairs'] = expand_dict(kwargs['pairs'])
+        >>> config = {}
+        >>> config['database'] = 'urldammit_test'
+        >>> cdb = Couch(config)
+
+        >>> print cdb.load("123abc")
+        None
         """
-        pass
+        data = self.db.get(id, None)
+        if not data: return None
+
+        uri = URI()
+
+        for k in uri.fieldnames():
+            setattr(uri, k, data[k])
+        
+        return uri
+
 
     def insert(self, uri):
-        pass
+        self.db[uri.id] = uri.data()
 
-    def update(self, uri):
-        pass
+    # update and insert equivalent
+    update = insert
 
     def delete(self, id):
         pass
 
     def bootstrap(self, **kwargs):
-        pass
+        dbname = self.config['database']
+        if not dbname in self.server:
+            self.server.create(dbname)
+            
 
     def purge(self, **kwargs):
         pass
 
+    def _default_config(self, config):
+        """
+        Setup default values for configuration
+        """
+        if not config: config = {}
+        config['server'] = config.get('server', 'http://localhost:5984')
+        config['database'] = config.get('database', 'urldammit')
+        return config
+        
 
 def expand_dict(d):
     """
@@ -71,4 +103,5 @@ def _test():
 
 if __name__ == '__main__':
     _test()
+    
 
