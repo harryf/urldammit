@@ -32,6 +32,7 @@ class URI(object):
     def __init__(self):
         [setattr(self, slot, None) for slot in URI.__slots__]
 
+    @classmethod
     def hash(cls, uri):
         """
         Static method - takes a string and returns a SHA-1 hex digest
@@ -40,7 +41,6 @@ class URI(object):
         'c909d39688beb7b00e4fd47788329a61b39f73d5'
         """
         return sha.new(uri).hexdigest()
-    hash = classmethod(hash)
 
     @Property
     def id():
@@ -370,15 +370,29 @@ class URI(object):
             data[item] = getattr(self, "_"+item)
         return data
 
-    def fieldnames(self):
+    @classmethod
+    def load(cls, data):
         """
-        Returns a list of the field names
-        as helper to db drivers
-        >>> u = URI()
-        >>> 'uri' in str(u.fieldnames())
+        Load data into the URI from a database
+
+        >>> xdata = {'uri':'http://local.ch','status':'200'}
+        >>> u = URI.load(xdata)
+        >>> u.uri == 'http://local.ch'
+        True
+        >>> u.status == 200
         True
         """
-        return [slot[1:] for slot in self.__slots__ if slot not in ('_id')]
+        u = URI()
+        items = (slot for slot in u.__slots__ if slot not in ('_id'))
+        for item in items:
+            cast = str
+            if item == '_status':
+                cast = int
+            try:
+                setattr(u, item, cast(data[item[1:]]))
+            except:
+                setattr(u, item, None)
+        return u
 
 class GuardedURI(URI):
     """

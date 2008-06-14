@@ -2,43 +2,93 @@
 # -*- coding: utf-8 -*-
 from couchdb import Server
 from uri import URI
+from lrucache import LRUCache
 
 class Couch(object):
+    """
+    >>> config = {}
+    >>> config['database'] = 'urldammit_test'
+    >>> cdb = Couch(config)
+    >>> del cdb.server['urldammit_test']
+    >>> cdb = Couch(config)
     
+    >>> print cdb.load("123abc")
+    None
+    >>> u = URI()
+    >>> u.status = 200
+    >>> u.uri = "http://local.ch/load_1.html"
+    >>> cdb.insert(u)
+    
+    >>> u1 = cdb.load(u.id)
+    >>> u1.uri == u.uri
+    True
+    >>> print u1.uri
+    http://local.ch/load_1.html
+    >>> cdb.delete(u.id)
+
+    >>> cdb.insert(u)
+    >>> u2 = cdb.load(u.id)
+    >>> u2.uri == u.uri
+    True
+    >>> cdb.delete(u.id)
+
+    >>> cdb.insert(u)
+    >>> u.tags = ['foo','bar']
+    >>> cdb.update(u)
+    >>> u3 = cdb.load(u.id)
+    >>> print u3.tags
+    ['foo', 'bar']
+
+    >>> del cdb.server['urldammit_test']
+    """
     def __init__(self, config = None):
+        self.cache = LRUCache(1000)
         self.config = self._default_config(config)
         self.server = Server(config['server'])
         self.bootstrap()
         self.db = self.server[config['database']]
 
     def load(self, id):
-        """
-        >>> config = {}
-        >>> config['database'] = 'urldammit_test'
-        >>> cdb = Couch(config)
+        record = self._load(id)
+        if not record:
+            return None
 
-        >>> print cdb.load("123abc")
-        None
-        """
-        data = self.db.get(id, None)
-        if not data: return None
-
-        uri = URI()
-
-        for k in uri.fieldnames():
-            setattr(uri, k, data[k])
+        data = {}
+        for k, v in record.items():
+            k = k.encode('utf-8')
+            if isinstance(v, unicode):
+                data[k] = v.encode('utf-8')
+            elif k == 'tags':
+                try:
+                    data[k] = [tag.encode('utf-8') for tag in v]
+                except:
+                    data[k] = None
+            elif k == 'pairs':
+                data[k] = contract_dict(v)
+            else:
+                data[k] = v
         
-        return uri
+        return URI.load(data)
 
 
     def insert(self, uri):
         self.db[uri.id] = uri.data()
+        if uri.id in self.cache:
+            del self.cache[uri.id]
 
-    # update and insert equivalent
-    update = insert
+    def update(self, uri):
+        data = self._load(uri.id)
+        if not data: self.insert(uri)
+        
+        for k, v in uri.data().items():
+            data[k] = v
+        self.db[uri.id] = data
+        self.cache[uri.id] = data
 
     def delete(self, id):
-        pass
+        del self.db[id]
+        if id in self.cache:
+            del self.cache[id]
 
     def bootstrap(self, **kwargs):
         dbname = self.config['database']
@@ -57,7 +107,11 @@ class Couch(object):
         config['server'] = config.get('server', 'http://localhost:5984')
         config['database'] = config.get('database', 'urldammit')
         return config
-        
+
+    def _load(self, id):
+        if not id in self.cache:
+            self.cache[id] = self.db.get(id, None)
+        return self.cache[id]
 
 def expand_dict(d):
     """
@@ -88,13 +142,20 @@ def contract_dict(pairs):
     >>> contract_dict(pairs) == {'a':1, 'b': 2}
     True
     """
+    if pairs is None: return None
     d = {}
     try:
         for pair in pairs:
-            d[pair['k']] = pair['v']
+            k = pair['k'].encode('utf-8')
+            if isinstance(pair['v'], unicode):
+                d[k] = pair['v'].encode('utf-8')
+            else:
+                d[k] = pair['v']
     except KeyError:
         pass
-    return d
+    if len(d.keys()) > 0:
+        return d
+    return None
 
 def _test():
     import doctest
