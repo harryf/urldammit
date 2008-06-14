@@ -82,8 +82,9 @@ class urldammit(object):
             reduceurl = getattr(i, 'reduceurl').lower() != 'false'
         except:
             pass
-        
-        uri = reduce_url(uri)
+
+        if reduceurl:
+            uri = reduce_url(uri)
 
         # allow an explicit delete using a delete
         # parameter (i.e. allow delete via HTML form)
@@ -195,7 +196,7 @@ class find(object):
     def GET(self, url):
         reduceurl = True
         try:
-            reduceurl = getattr(i, 'reduceurl').lower() != 'false'
+            reduceurl = getattr(web.input(), 'reduceurl').lower() != 'false'
         except:
             pass
 

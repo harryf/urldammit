@@ -188,6 +188,57 @@ class WebTests(unittest.TestCase):
         self.assert_( self.body['uri'] in content )
         self.assert_( "['abc', 'xyz']" in content )
 
+    def testReduceURL(self):
+        self.body['uri'] = 'http://foobar.com/%s.html?foo=bar'\
+                           % sys._getframe().f_code.co_name
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( 'foo=bar' not in content )
+
+        self._init_http()
+        self.body['uri'] = 'http://foobar.com/%s_2.html?abc=xyz'\
+                           % sys._getframe().f_code.co_name
+        self.body['reduceurl'] = 'false'
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( 'abc=xyz' in content )
+
+    def testFind(self):
+        from urllib2 import quote
+        self.body['uri'] = 'http://foobar.com/%s.html?foo=bar'\
+                           % sys._getframe().f_code.co_name
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( 'foo=bar' not in content )
+        
+        uri = response['content-location']
+
+        self._init_http()
+        findurl = 'http://localhost:8080/find/%s' % quote(self.body['uri'])
+        response, content = self.http.request(
+            findurl, 'GET'
+            )
+        self.assert_( response['content-location'] == uri)
+
+        self._init_http()
+        self.body['uri'] = 'http://foobar.com/%s.html?foo=bar'\
+                           % sys._getframe().f_code.co_name
+        self.body['reduceurl'] = 'false'
+        response, content = self._post()
+        self.assert_( response['status'] == '200' )
+        self.assert_( 'foo=bar' in content )
+
+        uri = response['content-location']
+
+        self._init_http()
+        findurl = 'http://localhost:8080/find/%s?reduceurl=false' % quote(self.body['uri'])
+        response, content = self.http.request(
+            findurl, 'GET'
+            )
+        self.assert_( response['content-location'] == uri)
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
