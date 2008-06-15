@@ -25,7 +25,7 @@ class URI(object):
     """
     __slots__ = (
         '_id','_uri','_location','_status',
-        '_created','_updated','_accessed',
+        '_created','_updated',
         '_tags','_pairs'
         )
 
@@ -392,7 +392,16 @@ class URI(object):
                 setattr(u, item, cast(data[item[1:]]))
             except:
                 setattr(u, item, None)
+
+        u._id = URI.hash(u.uri)
+        
         return u
+
+    def __str__(self):
+        data = {}
+        for item in self.__slots__:
+            data[item[1:]] = getattr(self, item)
+        return str(data)
 
 class GuardedURI(URI):
     """
