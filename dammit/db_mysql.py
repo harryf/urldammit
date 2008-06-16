@@ -8,9 +8,45 @@ def todatetime(dt):
     return time.strftime("%Y-%m-%d %H:%M:%S", dt.timetuple())
 
 class MySQL(object):
-    def __init__(self, config = None):
+    """
+    MySQL backend support
+    
+    >>> from datetime import datetime; now = datetime.now
+    >>>
+    >>> conf = {}
+    >>> conf['database_name'] = 'urldammit_doctest'
+    >>> m = MySQL(conf, dropfirst = True)
+    >>> u = URI()
+    >>> u.uri = 'http://local.ch/test1.html'
+    >>> u.status = 200
+    >>> u.created = now()
+    >>> u.updated = now()
+    >>> u.tags = ['foo','bar']
+    >>> u.pairs = {'foo':'hello', 'bar':'world'}
+    >>> m.insert(u)
+    >>> u1 = m.load(u.id)
+    >>> u1.uri == u.uri
+    True
+    >>> u1.tags == u.tags
+    True
+    >>> u1.pairs == u.pairs
+    True
+    >>> u1.tags = ['abc','xyz']
+    >>> u1.pairs = {'foo':'goodbye', 'bar':'world!'}
+    >>> m.update(u1)
+    >>> u2 = m.load(u1.id)
+    >>> u2.tags == u1.tags
+    True
+    >>> u2.pairs == u1.pairs
+    True
+    >>> m.delete(u2.id)
+    >>> None == m.load(u2.id)
+    True
+    """    
+    def __init__(self, config = None, dropfirst = False):
         self.config = self._default_config(config)
         self.db = self._connect()
+        self.bootstrap(dropfirst)
 
     def load(self, id):
         """
@@ -23,6 +59,8 @@ class MySQL(object):
         FROM urldammit_uris WHERE id = %s"""
         cursor.execute(sql, (id, ))
         row = cursor.fetchone()
+
+        if not row: return None
 
         data = {}
         data['uri'] = None
@@ -52,7 +90,7 @@ class MySQL(object):
         rows = cursor.fetchall()
         for row in rows:
             if data['pairs'] == None:
-                data['pairs'] = {}
+                data['pairs'] = dict()
             data['pairs'][row[0].encode('utf8')] = row[1].encode('utf8')
 
         return URI.load(data)
@@ -75,8 +113,8 @@ class MySQL(object):
             )
         cursor.execute( sql, params )
 
-        self._store_tags(cursor, uri.id, uri.tags, deletefirst = False)
-        self._store_pairs(cursor, uri.id, uri.pairs, deletefirst = False)
+        self._store_tags(cursor, uri, deletefirst = False)
+        self._store_pairs(cursor, uri, deletefirst = False)
 
         self.db.commit()
 
@@ -101,8 +139,8 @@ class MySQL(object):
 
         cursor.execute(sql, params)
 
-        self._store_tags(cursor, uri.id, uri.tags)
-        self._store_pairs(cursor, uri.id, uri.pairs)
+        self._store_tags(cursor, uri)
+        self._store_pairs(cursor, uri)
         
         self.db.commit()
 
@@ -122,7 +160,7 @@ class MySQL(object):
 
         self.db.commit()
 
-    def bootstrap(self, **kwargs):
+    def bootstrap(self, dropfirst = False):
         """
         Setup the database, tables etc.
         """
@@ -130,6 +168,18 @@ class MySQL(object):
         warnings.simplefilter('ignore')
         
         cursor = self.db.cursor()
+
+        if dropfirst:
+            sql = "DROP DATABASE IF EXISTS %s"\
+                  % self.config['database_name']
+            cursor.execute(sql)
+        
+        sql = "CREATE DATABASE IF NOT EXISTS %s"\
+              % self.config['database_name']
+        cursor.execute(sql)
+
+        sql = "USE %s" % self.config['database_name']
+        cursor.execute(sql)
         
         sql = """CREATE TABLE IF NOT EXISTS urldammit_uris (
             id BINARY( 40 ) NOT NULL ,
@@ -157,6 +207,7 @@ class MySQL(object):
         ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
         """
         cursor.execute(sql)
+        
         warnings.resetwarnings()
 
     def purge(self, **kwargs):
@@ -167,10 +218,11 @@ class MySQL(object):
 
     def _default_config(self, config):
         if not config: config = {}
-        config['database_host'] = 'localhost'
-        config['database_user'] = 'urldammit'
-        config['database_pass'] = 'where1sMyUrl'
-        config['database_name'] = 'urldammit_live'
+        
+        config['database_host'] = config.get('database_host', 'localhost')
+        config['database_user'] = config.get('database_user', 'urldammit')
+        config['database_pass'] = config.get('database_pass', 'where1sMyUrl')
+        config['database_name'] = config.get('database_name', 'urldammit_live')
 
         return config
         
@@ -178,67 +230,57 @@ class MySQL(object):
         try:
             # This will fail on MySQL < 4.1
             db = MySQLdb.connect(
-                self.config['database_host'],
-                self.config['database_user'],
-                self.config['database_pass'],
-                self.config['database_name'],
+                host = self.config['database_host'],
+                user = self.config['database_user'],
+                passwd = self.config['database_pass'],
                 use_unicode=1,
                 connect_timeout = 5,
                 init_command="set names utf8"
                 )
         except MySQLdb.OperationalError:
             db = MySQLdb.connect(
-                self.config['database_host'],
-                self.config['database_user'],
-                self.config['database_pass'],
-                self.config['database_name'],
+                host = self.config['database_host'],
+                user = self.config['database_user'],
+                passwd = self.config['database_pass'],
                 connect_timeout = 5,
                 use_unicode=1
                 )
+
         db.charset = 'utf8'
         return db
 
-    def _store_tags(self, cursor, id, tags, deletefirst = True):
-        if tags:
+    def _store_tags(self, cursor, uri, deletefirst = True):
+        if uri.tags_updated:
             if deletefirst:
                 sql = "DELETE FROM urldammit_tags WHERE id = %s"
-                cursor.execute(sql, (id, ))
+                cursor.execute(sql, (uri.id, ))
             
             sql = """INSERT INTO urldammit_tags
             ( id, tag ) VALUES ( %s, %s )"""
 
-            for tag in tags:
-                cursor.execute(sql, (id, tag))
+            for tag in uri.tags:
+                cursor.execute(sql, (uri.id, tag))
 
-    def _store_pairs(self, cursor, id, pairs, deletefirst = True):
-        if pairs:
+    def _store_pairs(self, cursor, uri, deletefirst = True):
+        if uri.pairs_updated:
             if deletefirst:
                 sql = "DELETE FROM urldammit_pairs WHERE id = %s"
-                cursor.execute(sql, (id, ))
+                cursor.execute(sql, (uri.id, ))
             
             sql = """INSERT INTO urldammit_pairs
             ( id, pair_key, pair_value )
             VALUES ( %s, %s, %s)"""
 
-            for k, v in pairs.items():
-                cursor.execute(sql, (id, k, v))
+            for k, v in uri.pairs.items():
+                cursor.execute(sql, (uri.id, k, v))
+
+
+def _test():
+    import doctest
+    doctest.testmod()
 
 
 if __name__ == '__main__':
-    from datetime import datetime; now = datetime.now
-    
-    m = MySQL()
-    m.bootstrap()
-    u = URI()
-    u.uri = "http://local.ch/test9.html"
-    u.status = 200
-    u.created = now()
-    u.updated = now()
-    u.tags = ['foo','bar']
-    u.pairs = {'foo':'hello', 'bar':'world'}
-    m.insert(u)
+    _test()
 
-    print m.load(u.id)
-    
-    m.delete(u.id)
 

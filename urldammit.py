@@ -5,7 +5,8 @@ import web # web.py
 from dammit.lrucache import LRUCache
 from dammit.request import *
 from dammit.uri import *
-from dammit.db.mock import MockDB
+from dammit.db_mock import MockDB
+from dammit.db_mysql import MySQL
 
 import view
 from view import render
@@ -20,7 +21,7 @@ urls = (
     '/find/(.*)', 'find',
     )
 
-db = MockDB()
+db = MySQL()
 manager = URIManager(db)
 
 # cache URIs we know about

@@ -26,7 +26,8 @@ class URI(object):
     __slots__ = (
         '_id','_uri','_location','_status',
         '_created','_updated',
-        '_tags','_pairs'
+        '_tags','_tags_updated',
+        '_pairs','_pairs_updated',
         )
 
     def __init__(self):
@@ -247,6 +248,24 @@ class URI(object):
                     raise ValueError("Invalid tag '%s'" % tag)
             
             self._tags = keywords
+            self._tags_updated = True
+
+    @Property
+    def tags_updated():
+        """
+        Whether the tags have been changed on this instance
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.uri = "http://local.ch"
+        >>> u.tags_updated == False
+        True
+        >>> u.tags = ['foo','bar']
+        >>> u.tags_updated == True
+        True
+        """
+        def fget(self):
+            return bool(self._tags_updated)
 
     @Property
     def pairs():
@@ -296,6 +315,24 @@ class URI(object):
                     raise ValueError("Value for key '%s' too large at %s bytes" % (k, len(v)))
                                      
             self._pairs = mapping
+            self._pairs_updated = True
+
+    @Property
+    def pairs_updated():
+        """
+        Whether the pairs have been changed on this instance
+
+        >>> u = URI()
+        >>> u.status = 200
+        >>> u.uri = "http://local.ch"
+        >>> u.pairs_updated == False
+        True
+        >>> u.pairs = {'foo':'bar'}
+        >>> u.pairs_updated == True
+        True
+        """
+        def fget(self):
+            return bool(self._pairs_updated)
 
     def is_found(self):
         """
@@ -364,7 +401,8 @@ class URI(object):
         >>> 'id' not in str(u.data())
         True
         """
-        items = (slot[1:] for slot in self.__slots__ if slot not in ('_id'))
+        items = (slot[1:] for slot in self.__slots__ \
+                 if slot not in ('_id', '_tags_updated', '_pairs_updated'))
         data = {}
         for item in items:
             data[item] = getattr(self, "_"+item)
@@ -383,11 +421,18 @@ class URI(object):
         True
         """
         u = URI()
-        items = (slot for slot in u.__slots__ if slot not in ('_id'))
+        items = (slot for slot in u.__slots__ \
+                 if slot not in ('_id', '_tags_updated', '_pairs_updated'))
+        casts = {
+            '_status': int,
+            '_tags': list,
+            '_pairs': dict,
+            '_created': lambda x: x,
+            '_updated': lambda x: x,
+            }
+        
         for item in items:
-            cast = str
-            if item == '_status':
-                cast = int
+            cast = casts.get(item, str)
             try:
                 setattr(u, item, cast(data[item[1:]]))
             except:
@@ -399,7 +444,9 @@ class URI(object):
 
     def __str__(self):
         data = {}
-        for item in self.__slots__:
+        items = (slot for slot in u.__slots__ \
+                 if slot not in ('_tags_updated', '_pairs_updated'))
+        for item in items:
             data[item[1:]] = getattr(self, item)
         return str(data)
 

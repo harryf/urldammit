@@ -1,14 +1,14 @@
 - Character set handling frontend (allow UTF-8 only for now)
 - Limits on input sizes
-- PUT
-- access control on senstive HTTP operations e.g. DELETE
+- Implement PUT
+- access control on senstive HTTP operations e.g. PUT, DELETE
 - db implementations:
   - couchdb (done)
   - mysql
-    - check for tags / pairs changes - only update when needed
-    - error handling
-    - tests
+    - error handling - retries?
   - hbase
   - solr?
-- check thread safety LRUCache?
+- caching
+  - check thread safety LRUCache?
+  - pluggable caching (e.g. memcached)
 - notion of "buckets"
