@@ -15,7 +15,7 @@ class MySQL(object):
     >>> from datetime import datetime; now = datetime.now
     >>>
     >>> conf = {}
-    >>> conf['database_name'] = 'urldammit_doctest'
+    >>> conf['db_name'] = 'urldammit_doctest'
     >>> m = MySQL(conf, dropfirst = True)
     >>> u = URI()
     >>> u.uri = 'http://local.ch/test1.html'
@@ -180,14 +180,14 @@ class MySQL(object):
 
         if dropfirst:
             sql = "DROP DATABASE IF EXISTS %s"\
-                  % self.config['database_name']
+                  % self.config['db_name']
             cursor.execute(sql)
         
         sql = "CREATE DATABASE IF NOT EXISTS %s"\
-              % self.config['database_name']
+              % self.config['db_name']
         cursor.execute(sql)
 
-        sql = "USE %s" % self.config['database_name']
+        sql = "USE %s" % self.config['db_name']
         cursor.execute(sql)
         
         sql = """CREATE TABLE IF NOT EXISTS urldammit_uris (
@@ -228,10 +228,10 @@ class MySQL(object):
     def _default_config(self, config):
         if not config: config = {}
         
-        config['database_host'] = config.get('database_host', 'localhost')
-        config['database_user'] = config.get('database_user', 'urldammit')
-        config['database_pass'] = config.get('database_pass', 'where1sMyUrl')
-        config['database_name'] = config.get('database_name', 'urldammit_live')
+        config['db_host'] = config.get('db_host', 'localhost')
+        config['db_user'] = config.get('db_user', 'urldammit')
+        config['db_pass'] = config.get('db_pass', 'where1sMyUrl')
+        config['db_name'] = config.get('db_name', 'urldammit_live')
 
         return config
         
@@ -239,18 +239,18 @@ class MySQL(object):
         try:
             # This will fail on MySQL < 4.1
             db = MySQLdb.connect(
-                host = self.config['database_host'],
-                user = self.config['database_user'],
-                passwd = self.config['database_pass'],
+                host = self.config['db_host'],
+                user = self.config['db_user'],
+                passwd = self.config['db_pass'],
                 use_unicode=1,
                 connect_timeout = 5,
                 init_command="set names utf8"
                 )
         except MySQLdb.OperationalError:
             db = MySQLdb.connect(
-                host = self.config['database_host'],
-                user = self.config['database_user'],
-                passwd = self.config['database_pass'],
+                host = self.config['db_host'],
+                user = self.config['db_user'],
+                passwd = self.config['db_pass'],
                 connect_timeout = 5,
                 use_unicode=1
                 )

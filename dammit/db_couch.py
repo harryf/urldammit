@@ -7,9 +7,9 @@ import db_cache
 class Couch(object):
     """
     >>> config = {}
-    >>> config['database'] = 'urldammit_test'
+    >>> config['db_name'] = 'urldammit_doctest'
     >>> cdb = Couch(config)
-    >>> del cdb.server['urldammit_test']
+    >>> del cdb.server['urldammit_doctest']
     >>> cdb = Couch(config)
     
     >>> print cdb.load("123abc")
@@ -39,13 +39,13 @@ class Couch(object):
     >>> print u3.tags
     ['foo', 'bar']
 
-    >>> del cdb.server['urldammit_test']
+    >>> del cdb.server['urldammit_doctest']
     """
     def __init__(self, config = None):
         self.config = self._default_config(config)
-        self.server = Server(config['server'])
+        self.server = Server(config['db_host'])
         self.bootstrap()
-        self.db = self.server[config['database']]
+        self.db = self.server[config['db_name']]
 
     @db_cache.load
     def load(self, id):
@@ -101,7 +101,7 @@ class Couch(object):
         del self.db[id]
 
     def bootstrap(self, **kwargs):
-        dbname = self.config['database']
+        dbname = self.config['db_name']
         if not dbname in self.server:
             self.server.create(dbname)
             
@@ -114,8 +114,8 @@ class Couch(object):
         Setup default values for configuration
         """
         if not config: config = {}
-        config['server'] = config.get('server', 'http://localhost:5984')
-        config['database'] = config.get('database', 'urldammit')
+        config['db_host'] = config.get('db_host', 'http://localhost:5984')
+        config['db_name'] = config.get('db_name', 'urldammit')
         return config
 
     def _load(self, id):
