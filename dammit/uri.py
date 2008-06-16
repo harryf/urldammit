@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys, datetime, sha, re, logging
+import sys, datetime, sha, re
+import constants
 
 def Property(function):
     """
@@ -66,6 +67,10 @@ class URI(object):
         >>> u.uri = "http://local.ch/new"
         Traceback (most recent call last):
         AttributeError: property 'uri' is immutable
+        >>> u = URI()
+        >>> u.uri = "".join("a" for x in range(constants.URI_LEN + 1))
+        Traceback (most recent call last):
+        AttributeError: uri is too long
         """
         def fget(self):
             return self._uri
@@ -74,6 +79,8 @@ class URI(object):
             url = str(url)
             if self._uri:
                 raise AttributeError("property 'uri' is immutable")
+            if len(url) > constants.URI_LEN:
+                raise AttributeError("uri is too long")
             self._uri = url
             self._id = URI.hash(url)
 
@@ -92,6 +99,9 @@ class URI(object):
         >>> u.location = "http://local.ch/new"
         >>> u.location == "http://local.ch/new"
         True
+        >>> u.location = "".join("a" for x in range(constants.URI_LEN + 1))
+        Traceback (most recent call last):
+        AttributeError: location is too long
         """
         def fget(self):
             return self._location
@@ -102,6 +112,8 @@ class URI(object):
                     "Cannot set property location unless status is 301 (not %s)" %\
                     self._status
                     )
+            if len(locn) > constants.URI_LOCATION_LEN:
+                raise AttributeError("location is too long")
             self._location = str(locn)
 
     @Property

@@ -1,14 +1,13 @@
 - Character set handling frontend (allow UTF-8 only for now)
-- Limits on input sizes
+- Limits on input sizes - define constants
 - Implement PUT
 - access control on senstive HTTP operations e.g. PUT, DELETE
 - db implementations:
   - couchdb (done)
-  - mysql
+  - mysql (done)
     - error handling - retries?
   - hbase
   - solr?
 - caching
   - check thread safety LRUCache?
-  - pluggable caching (e.g. memcached)
 - notion of "buckets"
