@@ -4,7 +4,7 @@ import cachemanager
 
 cache = cachemanager.new_instance()
 
-def cache_load(method):
+def load(method):
     """
     Decorator for load method
     """
@@ -15,7 +15,7 @@ def cache_load(method):
     
     return load_wrapper
 
-def cache_insert(method):
+def insert(method):
     """
     Decorator for insert
     """
@@ -25,7 +25,7 @@ def cache_insert(method):
 
     return insert_wrapper
 
-def cache_update(method):
+def update(method):
     """
     Decorator for insert
     """
@@ -35,7 +35,7 @@ def cache_update(method):
 
     return update_wrapper
 
-def cache_delete(method):
+def delete(method):
     """
     Decorator for delete
     """

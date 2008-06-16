@@ -3,6 +3,7 @@
 import time
 import MySQLdb
 from uri import URI
+import db_cache
 
 def todatetime(dt):
     return time.strftime("%Y-%m-%d %H:%M:%S", dt.timetuple())
@@ -52,6 +53,7 @@ class MySQL(object):
         self.db = self._connect()
         self.bootstrap(dropfirst)
 
+    @db_cache.load
     def load(self, id):
         """
         Takes a SHA-1 id
@@ -99,6 +101,7 @@ class MySQL(object):
 
         return URI.load(data)
 
+    @db_cache.insert
     def insert(self, uri):
         """
         Takes a URI object
@@ -122,6 +125,7 @@ class MySQL(object):
 
         self.db.commit()
 
+    @db_cache.update
     def update(self, uri):
         """
         Takes a URI object
@@ -148,6 +152,7 @@ class MySQL(object):
         
         self.db.commit()
 
+    @db_cache.delete
     def delete(self, id):
         """
         Takes a SHA-1 id
