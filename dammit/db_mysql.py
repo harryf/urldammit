@@ -31,6 +31,10 @@ class MySQL(object):
     True
     >>> u1.pairs == u.pairs
     True
+    >>> todatetime(u1.created) == todatetime(u.created)
+    True
+    >>> todatetime(u1.updated) == todatetime(u.updated)
+    True
     >>> u1.tags = ['abc','xyz']
     >>> u1.pairs = {'foo':'goodbye', 'bar':'world!'}
     >>> m.update(u1)
