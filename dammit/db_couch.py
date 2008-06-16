@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from couchdb import Server
 from uri import URI
-from lrucache import LRUCache
+import db_cache
 
 class Couch(object):
     """
@@ -42,53 +42,63 @@ class Couch(object):
     >>> del cdb.server['urldammit_test']
     """
     def __init__(self, config = None):
-        self.cache = LRUCache(1000)
         self.config = self._default_config(config)
         self.server = Server(config['server'])
         self.bootstrap()
         self.db = self.server[config['database']]
 
+    @db_cache.load
     def load(self, id):
-        record = self._load(id)
-        if not record:
-            return None
+        record = self.db.get(id, None)
+        if not record: return None
 
         data = {}
+        data['meta'] = {}
+        
         for k, v in record.items():
             k = k.encode('utf-8')
-            if isinstance(v, unicode):
-                data[k] = v.encode('utf-8')
-            elif k == 'tags':
+            if k == 'tags':
                 try:
                     data[k] = [tag.encode('utf-8') for tag in v]
                 except:
                     data[k] = None
             elif k == 'pairs':
                 data[k] = contract_dict(v)
+            elif k == '_rev':
+                data['meta']['_rev'] = v
+            elif isinstance(v, unicode):
+                data[k] = v.encode('utf-8')
             else:
                 data[k] = v
-        
+
         return URI.load(data)
 
-
+    @db_cache.insert
     def insert(self, uri):
         self.db[uri.id] = uri.data()
-        if uri.id in self.cache:
-            del self.cache[uri.id]
 
+    @db_cache.update
     def update(self, uri):
-        data = self._load(uri.id)
-        if not data: self.insert(uri)
+        stored_uri = self.load(uri.id)
+
+        if not stored_uri:
+            self.insert(uri)
+            return
+
+        data = {}
+        try:
+            data['_rev'] = stored_uri.meta['_rev']
+        except:
+            pass
         
         for k, v in uri.data().items():
             data[k] = v
+        
         self.db[uri.id] = data
-        self.cache[uri.id] = data
 
+    @db_cache.delete
     def delete(self, id):
         del self.db[id]
-        if id in self.cache:
-            del self.cache[id]
 
     def bootstrap(self, **kwargs):
         dbname = self.config['database']
@@ -109,9 +119,7 @@ class Couch(object):
         return config
 
     def _load(self, id):
-        if not id in self.cache:
-            self.cache[id] = self.db.get(id, None)
-        return self.cache[id]
+        return 
 
 def expand_dict(d):
     """

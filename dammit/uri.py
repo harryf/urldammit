@@ -26,8 +26,7 @@ class URI(object):
     __slots__ = (
         '_id','_uri','_location','_status',
         '_created','_updated',
-        '_tags','_tags_updated',
-        '_pairs','_pairs_updated',
+        '_tags', '_pairs', '_meta'
         )
 
     def __init__(self):
@@ -248,7 +247,7 @@ class URI(object):
                     raise ValueError("Invalid tag '%s'" % tag)
             
             self._tags = keywords
-            self._tags_updated = True
+            self.meta['tags_updated'] = True
 
     @Property
     def tags_updated():
@@ -265,7 +264,7 @@ class URI(object):
         True
         """
         def fget(self):
-            return bool(self._tags_updated)
+            return self.meta.get('tags_updated', False)
 
     @Property
     def pairs():
@@ -315,7 +314,7 @@ class URI(object):
                     raise ValueError("Value for key '%s' too large at %s bytes" % (k, len(v)))
                                      
             self._pairs = mapping
-            self._pairs_updated = True
+            self.meta['pairs_updated'] = True
 
     @Property
     def pairs_updated():
@@ -332,7 +331,27 @@ class URI(object):
         True
         """
         def fget(self):
-            return bool(self._pairs_updated)
+            return self.meta.get('pairs_updated', False)
+
+    @Property
+    def meta():
+        """
+        For storing meta info e.g. _rev for couchdb
+
+        >>> u = URI()
+        >>> u.meta['foo'] = 'bar'
+        >>> print u.meta['foo']
+        bar
+        """
+        def fget(self):
+            if not self._meta:
+                self._meta = {}
+            return self._meta
+
+        def fset(self, mapping):
+            if not isinstance(mapping, dict):
+                raise TypeError("meta is type dict not %s" % type(mapping))
+            self._meta = mapping
 
     def is_found(self):
         """
@@ -402,7 +421,7 @@ class URI(object):
         True
         """
         items = (slot[1:] for slot in self.__slots__ \
-                 if slot not in ('_id', '_tags_updated', '_pairs_updated'))
+                 if slot not in ('_id', '_meta',))
         data = {}
         for item in items:
             data[item] = getattr(self, "_"+item)
@@ -422,13 +441,14 @@ class URI(object):
         """
         u = URI()
         items = (slot for slot in u.__slots__ \
-                 if slot not in ('_id', '_tags_updated', '_pairs_updated'))
+                 if slot not in ('_id',))
         casts = {
             '_status': int,
             '_tags': list,
             '_pairs': dict,
             '_created': lambda x: x,
             '_updated': lambda x: x,
+            '_meta': dict,
             }
         
         for item in items:
@@ -445,7 +465,7 @@ class URI(object):
     def __str__(self):
         data = {}
         items = (slot for slot in u.__slots__ \
-                 if slot not in ('_tags_updated', '_pairs_updated'))
+                 if slot not in ('_meta',))
         for item in items:
             data[item[1:]] = getattr(self, item)
         return str(data)

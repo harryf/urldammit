@@ -21,7 +21,10 @@ def insert(method):
     """
     def insert_wrapper(self, uri):
         method(self, uri)
-        cache[uri.id] = uri
+        try:
+            del cache[uri.id]
+        except:
+            pass
 
     return insert_wrapper
 
@@ -31,7 +34,10 @@ def update(method):
     """
     def update_wrapper(self, uri):
         method(self, uri)
-        cache[uri.id] = uri
+        try:
+            del cache[uri.id]
+        except:
+            pass
 
     return update_wrapper
 
@@ -47,3 +53,4 @@ def delete(method):
             pass
 
     return delete_wrapper
+
