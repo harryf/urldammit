@@ -3,7 +3,7 @@
 import time
 import MySQLdb
 from uri import URI
-import db_cache
+import db_cache, constants
 
 def todatetime(dt):
     return time.strftime("%Y-%m-%d %H:%M:%S", dt.timetuple())
@@ -192,29 +192,29 @@ class MySQL(object):
         
         sql = """CREATE TABLE IF NOT EXISTS urldammit_uris (
             id BINARY( 40 ) NOT NULL ,
-            uri VARCHAR( 255 ) NOT NULL ,
-            location VARCHAR( 255 ) NULL ,
+            uri VARCHAR( %s ) NOT NULL ,
+            location VARCHAR( %s ) NULL ,
             status MEDIUMINT UNSIGNED NOT NULL ,
             created DATETIME NOT NULL ,
             updated DATETIME NOT NULL ,
             PRIMARY KEY ( id )
             ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-            """
+            """ % ( constants.URI_LEN, constants.URI_LOCATION_LEN )
         cursor.execute(sql)
 
         sql = """CREATE TABLE IF NOT EXISTS urldammit_tags (
         id BINARY( 40 ) NOT NULL ,
-        tag VARCHAR( 20 ) NOT NULL
+        tag VARCHAR( %s ) NOT NULL
         ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-        """
+        """ % ( constants.URI_TAG_LEN )
         cursor.execute(sql)
 
         sql = """CREATE TABLE IF NOT EXISTS urldammit_pairs (
         id BINARY( 40 ) NOT NULL ,
-        pair_key VARCHAR( 15 ) NOT NULL ,
-        pair_value VARCHAR( 50 ) NOT NULL
+        pair_key VARCHAR( %s ) NOT NULL ,
+        pair_value VARCHAR( %s ) NOT NULL
         ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-        """
+        """ % ( constants.URI_PAIR_KEY_LEN, constants.URI_PAIR_VALUE_LEN )
         cursor.execute(sql)
         
         warnings.resetwarnings()

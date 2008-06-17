@@ -163,11 +163,14 @@ class URI(object):
             if self._status in statuses:
                 if not code in statuses[self._status]:
                     raise ValueError(
-                        "Current status is '%s' - cannot change to '%s'" % (self._status, code)
+                        "Current status is '%s' - cannot change to '%s'" %\
+                        (self._status, code)
                         )
 
             if not self._status and code != 200:
-                raise ValueError("New URIs must begin at status '200' not '%s'" % code)
+                raise ValueError(
+                    "New URIs must begin at status '200' not '%s'" % code
+                    )
             
             self._status = code
         
@@ -194,10 +197,14 @@ class URI(object):
         def fset(self, time):
             
             if self._created:
-                raise AttributeError("property 'created' is immutable")
+                raise AttributeError(
+                    "property 'created' is immutable"
+                    )
             
-            if not type(time) == datetime.datetime:
-                raise TypeError("Expecting datetime.datetime not %s" % type(time))
+            if not isinstance(time, datetime.datetime):
+                raise TypeError(
+                    "Expecting datetime.datetime not %s" % type(time)
+                    )
             
             self._created = time
 
@@ -218,11 +225,11 @@ class URI(object):
             return self._updated
 
         def fset(self, time):
-            if not type(time) == datetime.datetime:
+            if not isinstance(time, datetime.datetime):
                 raise TypeError("Expecting datetime.datetime not %s" % type(time))
             self._updated = time
 
-    validtag = re.compile("^[a-zA-Z0-9]{1,20}$")
+    validtag = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_TAG_LEN)
     @Property
     def tags():
         """
@@ -249,14 +256,26 @@ class URI(object):
 
         def fset(self, keywords):
             if self._status != 200:
-                raise AttributeError("Can only modify tags while status is 200 (not %s)" % self._status)
-            if not type(keywords) == list:
-                raise TypeError("tags must be a list not %s" % type(keywords))
+                
+                raise AttributeError(
+                    "Can only modify tags while status is 200 (not %s)" %\
+                    self._status
+                    )
+            
+            if not isinstance(keywords, list):
+                raise TypeError(
+                    "tags must be a list not %s" % type(keywords)
+                    )
+            
             for tag in keywords:
-                if not type(tag) == str:
-                    raise TypeError("Tag '%s' must be a string not %s" % (tag, type(tag)))
+                if not isinstance(tag, str):
+                    raise TypeError(
+                        "Tag '%s' must be a string not %s" % (tag, type(tag))
+                        )
+                
                 if not URI.validtag.match(tag):
                     raise ValueError("Invalid tag '%s'" % tag)
+                
             
             self._tags = keywords
             self.meta['tags_updated'] = True
@@ -278,6 +297,7 @@ class URI(object):
         def fget(self):
             return self.meta.get('tags_updated', False)
 
+    validpairkey = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_PAIR_KEY_LEN)
     @Property
     def pairs():
         """
@@ -310,20 +330,35 @@ class URI(object):
 
         def fset(self, mapping):
             if self._status != 200:
-                raise AttributeError("Can only modify pairs while status is 200 (not %s)" % self._status)
+                raise AttributeError(
+                    "Can only modify pairs while status is 200 (not %s)" %\
+                    self._status
+                    )
 
-            if not type(mapping) == dict:
-                raise TypeError("pairs must be a dictionary not %s" % type(mapping))
+            if not isinstance(mapping, dict):
+                raise TypeError(
+                    "pairs must be a dictionary not %s" % type(mapping)
+                    )
 
             for k, v in mapping.items():
-                if not type(k) == str:
-                    raise TypeError("Key '%s' must be a string not %s" % (k, type(v)))
-                if not URI.validtag.match(k):
+                
+                if not isinstance(k, str):
+                    raise TypeError(
+                        "Key '%s' must be a string not %s" % (k, type(v))
+                        )
+                
+                if not URI.validpairkey.match(k):
                     raise ValueError("Invalid key '%s'" % k)
-                if not type(v) == str:
-                    raise TypeError("Value for key '%s' must be a string not %s" % (k, type(v)))
-                if len(v) > 100:
-                    raise ValueError("Value for key '%s' too large at %s bytes" % (k, len(v)))
+                
+                if not isinstance(v, str):
+                    raise TypeError(
+                        "Value for key '%s' must be a string not %s" % (k, type(v))
+                        )
+                
+                if len(v) > constants.URI_PAIR_VALUE_LEN:
+                    raise ValueError(
+                        "Value for key '%s' too large at %s bytes" % (k, len(v))
+                        )
                                      
             self._pairs = mapping
             self.meta['pairs_updated'] = True
