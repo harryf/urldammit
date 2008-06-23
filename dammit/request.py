@@ -4,6 +4,7 @@ import logging
 from urlparse import urlsplit, urlunsplit
 from types import *
 import simplejson
+import datetime
 
 def is_scalar(i):
     scalars = (NoneType, BooleanType, IntType, LongType,
@@ -80,7 +81,11 @@ def pack_response(u):
     d = {}
     for key in keys:
         try:
-            d[key] = str(getattr(u, key))
+            v = getattr(u, key)
+            if is_scalar(v) or type(v) == datetime.datetime:
+                d[key] = str(v)
+            else:
+                d[key] = v
         except:
             pass
 

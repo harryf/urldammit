@@ -154,7 +154,7 @@ class WebTests(unittest.TestCase):
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )        
-        self.assert_( "['foo', 'bar']" in content )
+        self.assert_( '["foo", "bar"]' in content )
 
     @Report
     def testPairs(self):
@@ -166,8 +166,8 @@ class WebTests(unittest.TestCase):
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )
-        self.assert_( "'y': '2'" in content )
-        self.assert_( "'x': '1'" in content )
+        self.assert_( '"y": "2"' in content )
+        self.assert_( '"x": "1"' in content )
 
     @Report
     def testTagChange(self):
@@ -179,14 +179,14 @@ class WebTests(unittest.TestCase):
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )
-        self.assert_( "['foo', 'bar']" in content )
+        self.assert_( '["foo", "bar"]' in content )
 
         self._init_http()
         self.body['tags'] = '["abc","xyz"]'
         response, content = self._post()
         self.assert_( response['status'] == '200' )
         self.assert_( self.body['uri'] in content )
-        self.assert_( "['abc', 'xyz']" in content )
+        self.assert_( '["abc", "xyz"]' in content )
 
     def testReduceURL(self):
         self.body['uri'] = 'http://foobar.com/%s.html?foo=bar'\

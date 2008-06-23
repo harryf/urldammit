@@ -157,8 +157,8 @@ class urldammit(object):
             return False
 
         tags = unpack_tags(getattr(i, 'tags', []))
-        pairs = unpack_pairs(getattr(i, 'pairs', []))
-        location = getattr(i, 'location', [])
+        pairs = unpack_pairs(getattr(i, 'pairs', {}))
+        location = getattr(i, 'location', None)
 
         try:
             u = manager.register(
