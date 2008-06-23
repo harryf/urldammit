@@ -8,6 +8,4 @@
     - error handling - retries?
   - hbase
   - solr?
-- caching
-  - check thread safety LRUCache?
 - notion of "buckets"

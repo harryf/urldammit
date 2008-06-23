@@ -29,14 +29,25 @@ known = LRUCache(config.KNOWN_CACHE_SIZE)
 unknown = LRUCache(config.UNKNOWN_CACHE_SIZE)
 
 class urldammit(object):
+    """
+    Main service handler
+    """
     
     def HEAD(self, id):
+        """
+        Check the status of a URI using a HEAD request
+        ID is the SHA-1 of the URI
+        """
         u = self._locate(id)
         if not u: return
         if self._redirect(u): return
         self._ok(u)
         
     def GET(self, id = None):
+        """
+        Get the record for a given URI
+        ID is the SHA-1 of the URI
+        """
         if not id:
             print "where's my url dammit?"
             return
@@ -55,34 +66,36 @@ class urldammit(object):
     validstatus = re.compile("^200|301|404$")
     
     def PUT(self, uri):
-        pass
+        """
+        PUT a record of a URI - deletes any existing record
+        of the URI and creates a new one.
+        Payload is www-form-urlencoded - same as POST except
+        delete param is ignored
+        """
+        i = web.input()
+        uri = reduce_uri(i, uri)
+        self.DELETE(URI.hash(uri))
+        self._store(uri, i)
 
     def POST(self):
         """
-        Update couch with status of uri
-        """
-        def required(input, key):
-            val = None
-            try:
-                val = getattr(input, key)
-            except AttributeError:
-                web.ctx.status = statusmap[406]
-                print "%s parameter required" % key
-            return val
+        Update with status of uri. payload is www-form-urlencoded
         
+        Params;
+
+        uri: the uri to store (required)
+        status: HTTP status (/[0-9]{3}/, required)
+        delete: Whether to delete the record (/true|false/)
+        tags: JSON encoded list of values obeying /[a-zA-Z0-9[1,50]/
+        pairs: JSON encoded key -> value hash - keys object tag rules
+        location: if status == 301, the new location to redirect to (required if status == 301)
+        """
         i = web.input()
 
         uri = required(i, 'uri')
         if uri is None: return
 
-        reduceurl = True
-        try:
-            reduceurl = getattr(i, 'reduceurl').lower() != 'false'
-        except:
-            pass
-
-        if reduceurl:
-            uri = reduce_url(uri)
+        uri = reduce_uri(i, uri)
 
         # allow an explicit delete using a delete
         # parameter (i.e. allow delete via HTML form)
@@ -94,40 +107,12 @@ class urldammit(object):
         except:
             pass
 
-        # if it's not a delete, we require a status
-        status = required(i, 'status')
-        if status is None: return
-
-        if not self.validstatus.match(status):
-            self._badrequest("Bad value for status: '%s'" % status)
-            return
-
-        tags = unpack_tags(getattr(i, 'tags', []))
-        pairs = unpack_pairs(getattr(i, 'pairs', []))
-        location = getattr(i, 'location', [])
-
-        try:
-            u = manager.register(
-                uri,
-                int(status),
-                tags = tags,
-                pairs = pairs,
-                location = location
-                )
-
-            known[u.id] = u
-            if u.id in unknown: del unknown[u.id]
-            
-            web.http.seeother(
-                "%s/%s" % ( web.ctx.home, u.id)
-                )
-            self._render(u)
-
-        except URIError, e:
-            self._badrequest(e.message)
-            
+        self._store(uri, i)
         
     def DELETE(self, id):
+        """
+        Delete a record, given the SHA-1 hash of it's URI
+        """
         manager.delete(id)
         if id in known: del known[id]
         web.ctx.status = statusmap[204]
@@ -160,7 +145,47 @@ class urldammit(object):
         
         return u
 
+    def _store(self, uri, i):
+        """
+        Store a record
+        """
+        status = required(i, 'status')
+        if status is None: return False
+
+        if not self.validstatus.match(status):
+            self._badrequest("Bad value for status: '%s'" % status)
+            return False
+
+        tags = unpack_tags(getattr(i, 'tags', []))
+        pairs = unpack_pairs(getattr(i, 'pairs', []))
+        location = getattr(i, 'location', [])
+
+        try:
+            u = manager.register(
+                uri,
+                int(status),
+                tags = tags,
+                pairs = pairs,
+                location = location
+                )
+
+            known[u.id] = u
+            if u.id in unknown: del unknown[u.id]
+            
+            web.http.seeother(
+                "%s/%s" % ( web.ctx.home, u.id)
+                )
+            self._render(u)
+            return True
+
+        except URIError, e:
+            self._badrequest(e.message)
+            return False
+
     def _ok(self, u):
+        """
+        Return a 200 response
+        """
         web.ctx.status = statusmap[200]
         web.http.lastmodified(u.updated)
 
@@ -180,10 +205,17 @@ class urldammit(object):
         return False
 
     def _render(self, u):
+        """
+        Display result, encoded as json
+        """
         if not u: return
         print pack_response(u)
 
     def _badrequest(self, msg):
+        """
+        Bad request (e.g. trying to record info on a status 404 url which
+        urldammit has never seen before)
+        """
         web.ctx.status = statusmap[400]
         print view.badrequest(reason = msg)
 
@@ -192,15 +224,7 @@ class find(object):
     To help clients find "reduced" urls
     """
     def GET(self, url):
-        reduceurl = True
-        try:
-            reduceurl = getattr(web.input(), 'reduceurl').lower() != 'false'
-        except:
-            pass
-
-        if reduceurl:
-            url = reduce_url(url)
-        
+        url = reduce_uri(web.input(), url)
         web.ctx.status = statusmap[303]
         web.header(
             'Location',
@@ -209,6 +233,9 @@ class find(object):
         return
 
 class tools:
+    """
+    Tools for humans...
+    """
     def GET(self):
         print render.base(view.tools())
 
@@ -219,6 +246,36 @@ class tools_addurl:
 class tools_checkurl:
     def GET(self):
         print render.base(view.checkurl())
+
+def reduce_uri(i, uri):
+    """
+    Utility fn - shorten the provided
+    uri to it's path (and left), if the object
+    i contains an attribute reduceurl
+    """
+    reduceurl = True
+    try:
+        reduceurl = getattr(i, 'reduceurl').lower() != 'false'
+    except:
+        pass
+
+    if reduceurl:
+        uri = reduce_url(uri)
+        
+    return uri
+
+def required(input, key):
+    """
+    Require an input parameter
+    """
+    val = None
+    try:
+        val = getattr(input, key)
+    except AttributeError:
+        web.ctx.status = statusmap[406]
+        print "%s parameter required" % key
+    return val
+
 
 if __name__ == '__main__':
     import logging, sys
