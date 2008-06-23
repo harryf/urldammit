@@ -135,8 +135,6 @@ class URI(object):
         >>> u.status
         404
         >>> u.status = 200
-        Traceback (most recent call last):
-        ValueError: Current status is '404' - cannot change to '200'
         >>> u.status = 301
         >>> u.status
         301
@@ -150,7 +148,7 @@ class URI(object):
         statuses = {
             200:(200, 301, 404),
             301:(301,),
-            404:(301, 404)
+            404:(200, 301, 404)
             }
 
         def fset(self, code):
@@ -511,7 +509,7 @@ class URI(object):
 
     def __str__(self):
         data = {}
-        items = (slot for slot in u.__slots__ \
+        items = (slot for slot in self.__slots__ \
                  if slot not in ('_meta',))
         for item in items:
             data[item[1:]] = getattr(self, item)
@@ -635,9 +633,9 @@ class URIManager(object):
         True
         >>> u5 = um.register('http://local.ch/test1.html', \
         status = 200, tags = ['d','e'])
-        >>> u5.status == 404
+        >>> u5.status == 200
         True
-        >>> u5.tags == ['b','c']
+        >>> u5.tags == ['d','e']
         True
         >>> u6 = um.register('http://local.ch/test1.html', \
         status = 301, location = 'http://local.ch/test2.html')
