@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import urllib2, logging, re
 import web # web.py
-from dammit.lrucache import LRUCache
+from dammit import cachemanager
 from dammit.request import *
 from dammit.uri import *
 
@@ -22,11 +22,11 @@ urls = (
 manager = URIManager(config.get_db())
 
 # cache URIs we know about
-known = LRUCache(config.KNOWN_CACHE_SIZE)
+known = cachemanager.new_instance()
 
 # cache queries we know nothing about otherwise
 # we have to ask couch each time
-unknown = LRUCache(config.UNKNOWN_CACHE_SIZE)
+unknown = cachemanager.new_instance()
 
 class urldammit(object):
     """
