@@ -253,6 +253,9 @@ def reduce_uri(i, uri):
     uri to it's path (and left), if the object
     i contains an attribute reduceurl
     """
+    if uri.startswith("http%3A%2F%2F"):
+        uri = urllib2.unquote(uri)
+    
     reduceurl = True
     try:
         reduceurl = getattr(i, 'reduceurl').lower() != 'false'

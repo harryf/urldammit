@@ -138,6 +138,43 @@ class WebTests(unittest.TestCase):
         self.assert_( content.strip() == '' )
 
     @Report
+    def testPUT(self):
+        self.body['uri'] = 'http://foobar.com/%s.html'\
+                        % sys._getframe().f_code.co_name
+        print self.body['uri']
+        response, content = self._post()
+        print response
+        self.assert_( response['status'] == '200' )
+        self.assert_( self.body['uri'] in content )
+        
+        uri = response['content-location']
+
+        self._init_http()
+        self.body['status'] = '404'
+        response, content = self._post()
+        self.assert_( response['status'] == '404' )
+
+        self._init_http()
+        self.body['status'] = '301'
+        self.body['location'] = 'http://local.ch/foobar.html'
+        response, content = self._post()
+        self.assert_( response['status'] == '301' )
+        self.assert_( self.body['location'] in content )
+
+        self._init_http()
+        self.body['status'] = '200'
+        self.body['location'] = None
+        response, content = self.http.request(
+            uri, 'PUT',
+            headers=self.headers,
+            body=urllib.urlencode(self.body)
+            )
+        print response
+        self.assert_( response['status'] == '200' )
+        self.assert_( content.strip() == '' )
+
+
+    @Report
     def testBadrequest(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
