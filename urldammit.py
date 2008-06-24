@@ -247,13 +247,14 @@ class tools_checkurl:
     def GET(self):
         print render.base(view.checkurl())
 
+encoded = re.compile('^https?%3A%2F%2F')
 def reduce_uri(i, uri):
     """
     Utility fn - shorten the provided
     uri to it's path (and left), if the object
     i contains an attribute reduceurl
     """
-    if uri.startswith("http%3A%2F%2F"):
+    if encoded.match(uri):
         uri = urllib2.unquote(uri)
     
     reduceurl = True
