@@ -2,7 +2,7 @@
 import web
 import config
 
-render = web.template.render('templates/', cache=config.cache)
+render = web.template.render('templates/', cache=config.cache_templates)
 
 def tools(**k):
     return render.tools()

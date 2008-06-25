@@ -515,6 +515,16 @@ class URI(object):
             data[item[1:]] = getattr(self, item)
         return str(data)
 
+    def __getstate__(self):
+        data = {}
+        for s in self.__slots__:
+            data[s] = getattr(self, s)
+        return data
+
+    def __setstate__(self, data):
+        for k in data:
+            setattr(self, k, data[k])
+
 class GuardedURI(URI):
     """
     Prevents setting status 301 or 404 or the location. Intended for use
