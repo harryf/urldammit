@@ -141,7 +141,6 @@ class WebTests(unittest.TestCase):
     def testPUT(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
-        print self.body['uri']
         response, content = self._post()
         print response
         self.assert_( response['status'] == '200' )
@@ -152,13 +151,18 @@ class WebTests(unittest.TestCase):
         self._init_http()
         self.body['status'] = '404'
         response, content = self._post()
-        self.assert_( response['status'] == '404' )
+        self.assert_( response['status'] == '200' )
+        self.assert_( '404' in content )
 
         self._init_http()
         self.body['status'] = '301'
         self.body['location'] = 'http://local.ch/foobar.html'
         response, content = self._post()
-        self.assert_( response['status'] == '301' )
+
+        print response
+        print "c: " + content
+        self.assert_( response['status'] == '200' )
+        self.assert_( '301' in content )
         self.assert_( self.body['location'] in content )
 
         self._init_http()

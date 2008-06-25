@@ -65,14 +65,17 @@ class urldammit(object):
 
     validstatus = re.compile("^200|301|404$")
     
-    def PUT(self, uri):
+    def PUT(self, id):
         """
         PUT a record of a URI - deletes any existing record
         of the URI and creates a new one.
+        Param is the SHA-1 hash of the URL
         Payload is www-form-urlencoded - same as POST except
         delete param is ignored
         """
         i = web.input()
+        uri = required(i, 'uri')
+        if uri is None: return
         uri = reduce_uri(i, uri)
         self.DELETE(URI.hash(uri))
         self._store(uri, i)
