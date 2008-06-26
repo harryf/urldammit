@@ -22,11 +22,11 @@ urls = (
 manager = URIManager(config.get_db())
 
 # cache URIs we know about
-known = cachemanager.new_instance()
+known = cachemanager.new_instance('known')
 
 # cache queries we know nothing about otherwise
 # we have to ask couch each time
-unknown = cachemanager.new_instance()
+unknown = cachemanager.new_instance('unknown')
 
 class urldammit(object):
     """

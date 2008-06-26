@@ -15,11 +15,28 @@ def register_cache_constructor(func):
     global cache_constructor
     cache_constructor = func
 
-def new_instance():
+def new_instance(namespace):
     """
-    Create a new instance of the current cache class 
+    Create a new instance of the current cache class
+    
+    For a shared cache (e.g. memcached), we need to
+    pass some identifier to prevent keys colliding
+    hence the namespace param (e.g. use as key prefix
+    for memcached impl)
     """
-    return cache_constructor()
+    return cache_constructor(namespace)
+
+def namespacer(func):
+    """
+    Decorator for injecting a namespace prefix into
+    the key argument, obtained from self.namespace
+    """
+    def namespace_wrapper(self, key, *args, **kwargs):
+        return func(
+            self,
+            key = "%s_%s" % ( self.namespace, key, *args, **kwargs )
+            )
+    return namespace_wrapper
 
 def _test():
     """

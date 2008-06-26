@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import cachemanager
 
-cache = cachemanager.new_instance()
+cache = cachemanager.new_instance('db')
 
 def load(method):
     """
