@@ -54,6 +54,7 @@ class MySQL(object):
         self.bootstrap(dropfirst)
 
     @db_cache.load
+    @reconnect
     def load(self, id):
         """
         Takes a SHA-1 id
@@ -102,6 +103,7 @@ class MySQL(object):
         return URI.load(data)
 
     @db_cache.insert
+    @reconnect
     def insert(self, uri):
         """
         Takes a URI object
@@ -126,6 +128,7 @@ class MySQL(object):
         self.db.commit()
 
     @db_cache.update
+    @reconnect
     def update(self, uri):
         """
         Takes a URI object
@@ -153,6 +156,7 @@ class MySQL(object):
         self.db.commit()
 
     @db_cache.delete
+    @reconnect
     def delete(self, id):
         """
         Takes a SHA-1 id
@@ -283,6 +287,19 @@ class MySQL(object):
             for k, v in uri.pairs.items():
                 cursor.execute(sql, (uri.id, k, v))
 
+def reconnect(func):
+    """
+    Decorator - reconnect and retry if we
+    get an OperationalError
+    """
+    def retry(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except MySQLdb.OperationalError, e:
+            self._connect()
+            return func(self, *args, **kwargs)
+    return retry
+        
 
 def _test():
     import doctest
