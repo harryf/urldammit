@@ -25,6 +25,7 @@ class MemcachedWrapper(object):
     """
     def __init__(self, mc, namespace):
         self.mc = mc
+        self.namespace = namespace
 
     def __len__(self):
         raise Exception("Not implemented")
