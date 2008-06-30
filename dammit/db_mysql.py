@@ -8,6 +8,19 @@ import db_cache, constants
 def todatetime(dt):
     return time.strftime("%Y-%m-%d %H:%M:%S", dt.timetuple())
 
+def reconnect(func):
+    """
+    Decorator - reconnect and retry if we
+    get an OperationalError
+    """
+    def retry(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except MySQLdb.OperationalError, e:
+            self._connect()
+            return func(self, *args, **kwargs)
+    return retry
+
 class MySQL(object):
     """
     MySQL backend support
@@ -285,21 +298,7 @@ class MySQL(object):
             VALUES ( %s, %s, %s)"""
 
             for k, v in uri.pairs.items():
-                cursor.execute(sql, (uri.id, k, v))
-
-def reconnect(func):
-    """
-    Decorator - reconnect and retry if we
-    get an OperationalError
-    """
-    def retry(self, *args, **kwargs):
-        try:
-            return func(self, *args, **kwargs)
-        except MySQLdb.OperationalError, e:
-            self._connect()
-            return func(self, *args, **kwargs)
-    return retry
-        
+                cursor.execute(sql, (uri.id, k, v))        
 
 def _test():
     import doctest
