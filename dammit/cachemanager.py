@@ -34,7 +34,8 @@ def namespacer(func):
     def namespace_wrapper(self, key, *args, **kwargs):
         return func(
             self,
-            key = "%s_%s" % ( self.namespace, key, *args, **kwargs )
+            key = "%s_%s" % ( self.namespace, key ),
+            *args, **kwargs
             )
     return namespace_wrapper
 
