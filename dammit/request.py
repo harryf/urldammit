@@ -109,6 +109,7 @@ statusmap = {
     306: '305 Switch Proxy',
     307: '307 Temporary Redirect',
     400: '400 Bad Request',
+    403: '403 Forbidden',
     404: '404 Not Found',
     }
 

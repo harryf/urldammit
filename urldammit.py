@@ -42,8 +42,8 @@ class urldammit(object):
         """
         u = self._locate(id)
         if not u: return
-        if self._redirect(u): return
-        self._ok(u)
+        if not self._redirect(u):
+            self._ok(u)
         
     def GET(self, id = None):
         """
@@ -58,10 +58,9 @@ class urldammit(object):
         if not u:
             return
         
-        if self._redirect(u):
-            return
-
-        self._ok(u)
+        if not self._redirect(u):
+            self._ok(u)
+        
         return self._render(u)
 
     validstatus = re.compile("^200|301|404$")
@@ -175,13 +174,11 @@ class urldammit(object):
                 )
 
             known[u.id] = u
-            if u.id in unknown: del unknown[u.id]
-            
-            web.seeother(
-                "%s/%s" % ( web.ctx.home, u.id)
-                )
-            return self._render(u)
-            return True
+            if u.id in unknown:
+                del unknown[u.id]
+
+            web.seeother("%s/%s" % (web.ctx.home, u.id))
+            return
 
         except URIError, e:
             self._badrequest(e.message)
@@ -235,7 +232,6 @@ class find(object):
             'Location',
             "%s/%s" % ( web.ctx.home, URI.hash(url) )
             )
-        return
 
 class tools:
     """
@@ -281,7 +277,7 @@ def required(input, key):
     try:
         val = getattr(input, key)
     except AttributeError:
-        web.ctx.status = statusmap[406]
+        web.ctx.status = statusmap[400]
         return "%s parameter required" % key
     return val
 
