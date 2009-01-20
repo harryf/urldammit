@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-def dict_constructor():
+def dict_constructor(namespace):
     return dict()
 
 cache_constructor = dict_constructor
@@ -32,7 +32,7 @@ def namespacer(func):
     the key argument, obtained from self.namespace
     """
     def namespace_wrapper(self, key, *args, **kwargs):
-        key = "%s_%s" % ( self.namespace, key )
+        key = "%s_%s" % ( self.namespace, key.encode('UTF-8') )
         return func( self, key, *args, **kwargs )
     return namespace_wrapper
 

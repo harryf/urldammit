@@ -12,21 +12,23 @@ import config
 
 urls = (
     '/', 'urldammit',
-    '/_tools', 'tools',
+    '/_tools/?', 'tools',
     '/_tools/addurl', 'tools_addurl',
     '/_tools/checkurl', 'tools_checkurl',
     '/([0-9a-f]{40})', 'urldammit',
     '/find/(.*)', 'find',
     )
+application = web.application(urls, globals() )
 
 manager = URIManager(config.get_db())
 
 # cache URIs we know about
 known = cachemanager.new_instance('known')
 
-# cache queries we know nothing about otherwise
-# we have to ask couch each time
+# cache queries we know nothing to avoid
+# backend requests
 unknown = cachemanager.new_instance('unknown')
+
 
 class urldammit(object):
     """
@@ -49,8 +51,7 @@ class urldammit(object):
         ID is the SHA-1 of the URI
         """
         if not id:
-            print "where's my url dammit?"
-            return
+            return "where's my url dammit?"
 
         u = self._locate(id)
         
@@ -61,7 +62,7 @@ class urldammit(object):
             return
 
         self._ok(u)
-        self._render(u)
+        return self._render(u)
 
     validstatus = re.compile("^200|301|404$")
     
@@ -139,6 +140,7 @@ class urldammit(object):
         if not u:
             u = manager.load(id)
             
+            
             if not u:
                 unknown[id] = True
                 web.notfound()
@@ -175,10 +177,10 @@ class urldammit(object):
             known[u.id] = u
             if u.id in unknown: del unknown[u.id]
             
-            web.http.seeother(
+            web.seeother(
                 "%s/%s" % ( web.ctx.home, u.id)
                 )
-            self._render(u)
+            return self._render(u)
             return True
 
         except URIError, e:
@@ -212,7 +214,7 @@ class urldammit(object):
         Display result, encoded as json
         """
         if not u: return
-        print pack_response(u)
+        return pack_response(u)
 
     def _badrequest(self, msg):
         """
@@ -220,7 +222,7 @@ class urldammit(object):
         urldammit has never seen before)
         """
         web.ctx.status = statusmap[400]
-        print view.badrequest(reason = msg)
+        return view.badrequest(reason = msg)
 
 class find(object):
     """
@@ -240,15 +242,15 @@ class tools:
     Tools for humans...
     """
     def GET(self):
-        print render.base(view.tools())
+        return render.base(view.tools())
 
 class tools_addurl:
     def GET(self):
-        print render.base(view.addurl())
+        return render.base(view.addurl())
 
 class tools_checkurl:
     def GET(self):
-        print render.base(view.checkurl())
+        return render.base(view.checkurl())
 
 encoded = re.compile('^https?%3A%2F%2F')
 def reduce_uri(i, uri):
@@ -280,7 +282,7 @@ def required(input, key):
         val = getattr(input, key)
     except AttributeError:
         web.ctx.status = statusmap[406]
-        print "%s parameter required" % key
+        return "%s parameter required" % key
     return val
 
 
@@ -293,5 +295,6 @@ if __name__ == '__main__':
         dammit.webtests.run()
     else:
         web.webapi.internalerror = web.debugerror
-        web.run(urls, globals() )
+        #application = web.application(urls, globals() )
+        application.run()
 
