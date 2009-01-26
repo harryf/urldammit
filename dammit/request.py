@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from urlparse import urlsplit, urlunsplit
+from urllib import unquote_plus as urldecode
 from types import *
 import simplejson
 import datetime
@@ -40,7 +41,7 @@ def unpack_tags(s):
     if not type(us) == list:
         return None
 
-    return [str(i) for i in us if is_scalar(i)]
+    return [str(urldecode(i)) for i in us if is_scalar(i)]
 
 def unpack_pairs(s):
     """
@@ -67,7 +68,7 @@ def unpack_pairs(s):
     for k, v in us.items():
         if not is_scalar(k) or not is_scalar(v):
             continue
-        out[str(k)] = str(v)
+        out[str(urldecode(k))] = str(urldecode(v))
 
     return out
 
