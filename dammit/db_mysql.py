@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import time
 import MySQLdb
+from MySQLdb import IntegrityError
 from uri import URI
 import db_cache, constants
 
@@ -80,7 +81,8 @@ class MySQL(object):
         cursor.execute(sql, (id, ))
         row = cursor.fetchone()
 
-        if not row: return None
+        if not row:
+            return None
 
         data = {}
         data['uri'] = None
@@ -133,7 +135,12 @@ class MySQL(object):
             todatetime(uri.created),
             todatetime(uri.updated)
             )
-        cursor.execute( sql, params )
+
+        try:
+            cursor.execute( sql, params )
+        except IntegrityError:
+            # Duplicate key - we don't care
+            return
 
         self._store_tags(cursor, uri, deletefirst = False)
         self._store_pairs(cursor, uri, deletefirst = False)

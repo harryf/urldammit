@@ -9,9 +9,11 @@ def load(method):
     Decorator for load method
     """
     def load_wrapper(self, id):
-        if not id in cache:
+        try:
+            return cache[id]
+        except:
             cache[id] = method(self, id)
-        return cache[id]
+            return cache[id]
     
     return load_wrapper
 

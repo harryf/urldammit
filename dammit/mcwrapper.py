@@ -40,10 +40,7 @@ class MemcachedWrapper(object):
 
     @namespacer
     def __getitem__(self, key):
-        val = self.mc.get(key)
-        if val == None:
-            raise KeyError(key)
-        return val
+        return self.mc.get(key)
 
     @namespacer
     def __delitem__(self, key):
