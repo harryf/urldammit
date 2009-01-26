@@ -139,7 +139,8 @@ class MySQL(object):
         try:
             cursor.execute( sql, params )
         except IntegrityError:
-            # Duplicate key - we don't care
+            # update instead...
+            self.update(uri)
             return
 
         self._store_tags(cursor, uri, deletefirst = False)
@@ -229,6 +230,7 @@ class MySQL(object):
         sql = """CREATE TABLE IF NOT EXISTS urldammit_tags (
         id BINARY( 40 ) NOT NULL ,
         tag VARCHAR( %s ) NOT NULL
+        KEY id_index (id)
         ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
         """ % ( constants.URI_TAG_LEN )
         cursor.execute(sql)
@@ -237,6 +239,7 @@ class MySQL(object):
         id BINARY( 40 ) NOT NULL ,
         pair_key VARCHAR( %s ) NOT NULL ,
         pair_value VARCHAR( %s ) NOT NULL
+        KEY id_index (id)
         ) ENGINE = innodb CHARACTER SET utf8 COLLATE utf8_unicode_ci;
         """ % ( constants.URI_PAIR_KEY_LEN, constants.URI_PAIR_VALUE_LEN )
         cursor.execute(sql)
