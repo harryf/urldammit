@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import urllib2, logging, re
-import web # web.py
+import web
 from dammit import cachemanager
 from dammit.request import *
 from dammit.uri import *
@@ -77,7 +77,7 @@ class urldammit(object):
         uri = required(i, 'uri')
         if uri is None: return
         uri = reduce_uri(i, uri)
-        self.DELETE(URI.hash(uri))
+        self._delete(URI.hash(uri))
         self._store(uri, i)
 
     def POST(self):
@@ -116,8 +116,7 @@ class urldammit(object):
         """
         Delete a record, given the SHA-1 hash of it's URI
         """
-        manager.delete(id)
-        if id in known: del known[id]
+        self._delete(id)
         web.ctx.status = statusmap[204]
 
     def _locate(self, id):
@@ -154,7 +153,8 @@ class urldammit(object):
         Store a record
         """
         status = required(i, 'status')
-        if status is None: return False
+        if status is None:
+            return False
 
         if not self.validstatus.match(status):
             self._badrequest("Bad value for status: '%s'" % status)
@@ -183,6 +183,11 @@ class urldammit(object):
         except URIError, e:
             self._badrequest(e.message)
             return False
+
+    def _delete(self, id):
+        if id in known:
+            del known[id]
+        manager.delete(id)
 
     def _ok(self, u):
         """
@@ -283,14 +288,14 @@ def required(input, key):
 
 
 if __name__ == '__main__':
-    import logging, sys
-    logging.basicConfig(level=logging.DEBUG)
-
+    import sys
+    
     if len(sys.argv) > 1 and sys.argv[1] == "webtest":
-        import dammit.webtests
-        dammit.webtests.run()
-    else:
-        web.webapi.internalerror = web.debugerror
-        #application = web.application(urls, globals() )
-        application.run()
+        print "Running in test mode"
+        manager = URIManager(config.get_db_mock())
+        known = {}
+        unknown = {}
+        del sys.argv[1]
+
+    application.run()
 

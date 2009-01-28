@@ -4,16 +4,6 @@ import urllib, httplib2, unittest, sys, datetime
 
 REPORT = False
 
-def Report(test):
-    def runtest(self):
-        if not test.__name__ == 'test303':
-            return
-        if REPORT: print "[%s] testing %s" % ( datetime.datetime.now(), test.__name__ )
-        test(self)
-        if REPORT: print "[%s] testing %s done" % ( datetime.datetime.now(), test.__name__ )
-    return runtest
-
-
 class WebTests(unittest.TestCase):
 
     def setUp(self):
@@ -36,20 +26,24 @@ class WebTests(unittest.TestCase):
         if self.http: del self.http
         self.http = httplib2.Http(timeout = 10)
         
-    def _post(self):
+    def _post(self, delete = False):
+        body = self.body
+        if delete:
+            body['delete'] = 'true'
+        
         return self.http.request(
             self.url, 'POST',
             headers=self.headers,
-            body=urllib.urlencode(self.body)
+            body=urllib.urlencode(body),
             )
 
-    @Report
+    
     def testHome(self):
         response, content = self.http.request(self.url, 'GET')
         self.assert_( response['status'] == '200' )
         self.assert_("where's my url dammit?" in content)
 
-    @Report
+    
     def test404(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                            % sys._getframe().f_code.co_name
@@ -58,7 +52,7 @@ class WebTests(unittest.TestCase):
             )
         self.assert_(response['status'] == '404')
 
-    @Report
+    
     def test303(self):
         # test the direct response to a POST
         # without following the redirect
@@ -70,7 +64,7 @@ class WebTests(unittest.TestCase):
         self.assert_( content == 'None' )
 
 
-    @Report
+    
     def testPOST(self):
         # TODO test updated time
         self.body['uri'] = 'http://foobar.com/%s.html'\
@@ -79,7 +73,7 @@ class WebTests(unittest.TestCase):
         self.assert_(response['status'] == '200')
         self.assert_( self.body['uri'] in content )
 
-    @Report
+    
     def testDELETE(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
@@ -102,7 +96,7 @@ class WebTests(unittest.TestCase):
             )
         self.assert_( response['status'] == '404' )
 
-    @Report
+    
     def testDeleteViaPost(self):
         # with empty value in status field, record is deleted
         self.body['uri'] = 'http://foobar.com/%s.html'\
@@ -124,7 +118,7 @@ class WebTests(unittest.TestCase):
             )
         self.assert_( response['status'] == '404' )
 
-    @Report
+    
     def testHEAD(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
@@ -139,16 +133,12 @@ class WebTests(unittest.TestCase):
         self.assert_( response['status'] == '200' )
         self.assert_( content.strip() == '' )
 
-    @Report
+    """
     def testPUT(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
         response, content = self._post()
-        print response
         self.assert_( response['status'] == '200' )
-        self.assert_( self.body['uri'] in content )
-        
-        uri = response['content-location']
 
         self._init_http()
         self.body['status'] = '404'
@@ -162,7 +152,8 @@ class WebTests(unittest.TestCase):
         response, content = self._post()
 
         print response
-        print "c: " + content
+        print content
+
         self.assert_( response['status'] == '200' )
         self.assert_( '301' in content )
         self.assert_( self.body['location'] in content )
@@ -175,12 +166,11 @@ class WebTests(unittest.TestCase):
             headers=self.headers,
             body=urllib.urlencode(self.body)
             )
-        print response
         self.assert_( response['status'] == '200' )
         self.assert_( content.strip() == '' )
+    """
 
-
-    @Report
+    
     def testBadrequest(self):
         self.body['uri'] = 'http://foobar.com/%s.html'\
                         % sys._getframe().f_code.co_name
@@ -188,7 +178,6 @@ class WebTests(unittest.TestCase):
         response, content = self._post()
         self.assert_( response['status'] == '400' )
 
-    @Report
     def testTags(self):
         # TODO test updated time
         self.body['uri'] = 'http://foobar.com/%s.html'\
@@ -196,10 +185,10 @@ class WebTests(unittest.TestCase):
         self.body['tags'] = '["foo","bar"]'
         response, content = self._post()
         self.assert_( response['status'] == '200' )
-        self.assert_( self.body['uri'] in content )        
+        self.assert_( self.body['uri'] in content )
         self.assert_( '["foo", "bar"]' in content )
 
-    @Report
+    
     def testPairs(self):
         self._init_http()
         # TODO test updated time
@@ -212,7 +201,7 @@ class WebTests(unittest.TestCase):
         self.assert_( '"y": "2"' in content )
         self.assert_( '"x": "1"' in content )
 
-    @Report
+    
     def testTagChange(self):
         # TODO test updated time!
         self.body['uri'] = 'http://foobar.com/%s.html'\

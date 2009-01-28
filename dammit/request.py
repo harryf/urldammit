@@ -17,10 +17,6 @@ def is_scalar(i):
 
     return False
 
-def is_pair(i):
-    # todo check it's a key value pair
-    return True
-
 def unpack_tags(s):
     """
     >>> unpack_tags(None)
@@ -35,14 +31,17 @@ def unpack_tags(s):
         return None
     try:
         us = simplejson.loads(s)
-    except ValueError:
+    except ValueError, e:
         return None
-    
+
     if not type(us) == list:
         return None
 
-    return [str(urldecode(i)) for i in us if is_scalar(i)]
+    return [i for i in us if is_scalar(i)]
 
+def decode_string(s):
+    return urldecode(s.decode('utf-8'))
+    
 def unpack_pairs(s):
     """
     >>> unpack_pairs(None)
@@ -60,7 +59,7 @@ def unpack_pairs(s):
         us = simplejson.loads(s)
     except ValueError:
         return None
-    
+
     if not type(us) == dict:
         return None
 
@@ -68,7 +67,10 @@ def unpack_pairs(s):
     for k, v in us.items():
         if not is_scalar(k) or not is_scalar(v):
             continue
-        out[str(urldecode(k))] = str(urldecode(v))
+        try:
+            out[decode_string(s)] = decode_string(s)
+        except:
+            out[k] = v
 
     return out
 

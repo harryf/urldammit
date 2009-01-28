@@ -719,7 +719,7 @@ class URIManager(object):
             if updated:
                 u.updated = now
                 self.db.update(u)
-            
+
         return u
 
     def delete(self, id):
