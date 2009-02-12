@@ -10,13 +10,19 @@ server
 """
 import cachemanager
 
-cache = cachemanager.new_instance('db')
+cache_instance = None
+def get_cache():
+    global cache_instance
+    if not cache_instance:
+        cache_instance = cachemanager.new_instance('db')
+    return cache_instance
 
 def load(method):
     """
     Decorator for load method
     """
     def load_wrapper(self, id):
+        cache = get_cache()
         try:
             cached = cache[id]
             if cached is not None:
@@ -34,6 +40,7 @@ def insert(method):
     Decorator for insert
     """
     def insert_wrapper(self, uri):
+        cache = get_cache()
         try:
             del cache[uri.id]
         except:
@@ -47,6 +54,7 @@ def update(method):
     Decorator for insert
     """
     def update_wrapper(self, uri):
+        cache = get_cache()
         try:
             del cache[uri.id]
         except:
@@ -60,6 +68,7 @@ def delete(method):
     Decorator for delete
     """
     def delete_wrapper(self, id):
+        cache = get_cache()
         try:
             del cache[id]
         except:
