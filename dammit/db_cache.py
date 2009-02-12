@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Decorator methods for the DB to provide a
+cache layer upon records in the DB
+
+This is seperate to the cache of known
+and unknown URLs maintained by the urldammit
+server
+"""
 import cachemanager
 
 cache = cachemanager.new_instance('db')
