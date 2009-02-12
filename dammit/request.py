@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
+import datetime, re, logging
+from types import *
 from urlparse import urlsplit, urlunsplit
 from urllib import unquote_plus as urldecode
-from types import *
 import simplejson
-import datetime
 
 def is_scalar(i):
+    """
+    >>> is_scalar('Foo')
+    True
+    >>> is_scalar([1,2])
+    False
+    """
     scalars = (NoneType, BooleanType, IntType, LongType,
                FloatType, ComplexType, StringType,
                UnicodeType)
@@ -22,9 +27,9 @@ def unpack_tags(s):
     >>> unpack_tags(None)
     >>> unpack_tags('')
     >>> unpack_tags('foobar')
-    >>> ["x", "1"] == unpack_tags('["x", 1]')
+    >>> [u'x', 1] == unpack_tags('["x", 1]')
     True
-    >>> ["x", "1"] == unpack_tags('["x", 1, {"y": 2}]')
+    >>> [u'x', 1] == unpack_tags('["x", 1, {"y": 2}]')
     True
     """
     if not s or s == '':
@@ -39,17 +44,30 @@ def unpack_tags(s):
 
     return [i for i in us if is_scalar(i)]
 
+non_ascii_pattern = re.compile('[^\x09\x0A\x0D\x20-\x7E]+')
 def decode_string(s):
-    return urldecode(s.decode('utf-8'))
+    """
+    >>> decode_string('foo')
+    u'foo'
+    >>> decode_string('foo%20bar')
+    u'foo bar'
+    >>> decode_string('föö%20bär')
+    u'f\\xf6\\xf6 b\\xe4r'
+    """
+    try:
+        s = s.decode('utf-8')
+    except:
+        s = unicode(non_ascii_pattern.sub('', s))
+    return urldecode(s)
     
 def unpack_pairs(s):
     """
     >>> unpack_pairs(None)
     >>> unpack_pairs('')
     >>> unpack_pairs('foobar')
-    >>> {"y":"2"} == unpack_pairs('{"y": 2}')
+    >>> {u'y':2} == unpack_pairs('{"y": 2}')
     True
-    >>> {"y":"2"} == unpack_pairs('{"y": 2, "x":[1,2]}')
+    >>> {u'y':2} == unpack_pairs('{"y": 2, "x":[1,2]}')
     True
     """
     if not s or s == '':
@@ -68,7 +86,7 @@ def unpack_pairs(s):
         if not is_scalar(k) or not is_scalar(v):
             continue
         try:
-            out[decode_string(s)] = decode_string(s)
+            out[decode_string(k)] = decode_string(v)
         except:
             out[k] = v
 
@@ -77,6 +95,29 @@ def unpack_pairs(s):
 def pack_response(u):
     """
     Construct an response as JSON
+    >>> pack_response('')
+    '{}'
+    >>> class TestUri: uri = 'http://www.google.com'
+    >>> pack_response(TestUri())
+    '{"uri": "http://www.google.com"}'
+    >>> class TestUri: status = 200
+    >>> pack_response(TestUri())
+    '{"status": "200"}'
+    >>> class TestUri: created = datetime.datetime(2009,1,1)
+    >>> pack_response(TestUri())
+    '{"created": "2009-01-01 00:00:00"}'
+    >>> class TestUri: updated = datetime.datetime(2009,1,1)
+    >>> pack_response(TestUri())
+    '{"updated": "2009-01-01 00:00:00"}'
+    >>> class TestUri: location = 'http://www.google.com'
+    >>> pack_response(TestUri())
+    '{"location": "http://www.google.com"}'
+    >>> class TestUri: tags = ['foo','bar']
+    >>> pack_response(TestUri())
+    '{"tags": ["foo", "bar"]}'
+    >>> class TestUri: pairs = {'foo':'bar'}
+    >>> pack_response(TestUri())
+    '{"pairs": {"foo": "bar"}}'
     """
     keys = ('uri','status','created','updated',
             'location','tags','pairs')
