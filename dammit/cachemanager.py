@@ -38,7 +38,7 @@ def namespacer(func):
 
 def _test():
     """
-    >>> c = new_instance()
+    >>> c = new_instance('test')
     >>> isinstance(c, dict)
     True
     >>> c['foo'] = 'bar'
@@ -46,8 +46,8 @@ def _test():
     bar
     
     >>> from lrucache import LRUCache
-    >>> register_cache_constructor(lambda: LRUCache(1000))
-    >>> c1 = new_instance()
+    >>> register_cache_constructor(lambda x: LRUCache(1000))
+    >>> c1 = new_instance('test')
     >>> isinstance(c1, LRUCache)
     True
     """
