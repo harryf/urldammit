@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys, datetime, sha, re
+import sys, datetime, sha, re, logging
 import constants
 
 def Property(function):
@@ -227,7 +227,7 @@ class URI(object):
                 raise TypeError("Expecting datetime.datetime not %s" % type(time))
             self._updated = time
 
-    validtag = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_TAG_LEN)
+    validtag = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_TAG_LEN, re.U)
     @Property
     def tags():
         """
@@ -266,7 +266,7 @@ class URI(object):
                     )
             
             for tag in keywords:
-                if not isinstance(tag, str):
+                if not type(tag) in (unicode, str):
                     raise TypeError(
                         "Tag '%s' must be a string not %s" % (tag, type(tag))
                         )
@@ -295,7 +295,7 @@ class URI(object):
         def fget(self):
             return self.meta.get('tags_updated', False)
 
-    validpairkey = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_PAIR_KEY_LEN)
+    validpairkey = re.compile("^[a-zA-Z0-9]{1,%s}$" % constants.URI_PAIR_KEY_LEN, re.U)
     @Property
     def pairs():
         """
@@ -340,7 +340,7 @@ class URI(object):
 
             for k, v in mapping.items():
                 
-                if not isinstance(k, str):
+                if not type(k) in (unicode, str):
                     raise TypeError(
                         "Key '%s' must be a string not %s" % (k, type(v))
                         )
@@ -348,7 +348,7 @@ class URI(object):
                 if not URI.validpairkey.match(k):
                     raise ValueError("Invalid key '%s'" % k)
                 
-                if not isinstance(v, str):
+                if not type(v) in (unicode, str):
                     raise TypeError(
                         "Value for key '%s' must be a string not %s" % (k, type(v))
                         )
@@ -689,8 +689,8 @@ class URIManager(object):
                 if not getattr(uri, key) == value:
                     setattr(uri, key, value)
                     updated = True
-            except:
-                pass
+            except Exception, e:
+                logging.error("Error applying key '%s' for '%s': %s", key, uri.uri, e)
             return updated
             
 
