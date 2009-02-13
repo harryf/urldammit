@@ -67,9 +67,9 @@ def unpack_pairs(s):
     >>> unpack_pairs(None)
     >>> unpack_pairs('')
     >>> unpack_pairs('foobar')
-    >>> {u'y':2} == unpack_pairs('{"y": 2}')
+    >>> {u'y': u'2'} == unpack_pairs('{"y": 2}')
     True
-    >>> {u'y':2} == unpack_pairs('{"y": 2, "x":[1,2]}')
+    >>> {u'y': u'2'} == unpack_pairs('{"y": 2, "x":[1,2]}')
     True
     """
     if not s or s == '':
