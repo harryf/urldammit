@@ -57,6 +57,8 @@ def decode_string(s):
     try:
         s = s.decode('utf-8')
     except:
+        if not type(s) in (str, unicode):
+            s = unicode(s)
         s = unicode(non_ascii_pattern.sub('', s))
     return urldecode(s)
     
@@ -85,10 +87,7 @@ def unpack_pairs(s):
     for k, v in us.items():
         if not is_scalar(k) or not is_scalar(v):
             continue
-        try:
-            out[decode_string(k)] = decode_string(v)
-        except:
-            out[k] = v
+        out[decode_string(k)] = decode_string(v)
 
     return out
 
