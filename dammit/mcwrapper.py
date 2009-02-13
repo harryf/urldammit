@@ -11,7 +11,7 @@ class MemcachedWrapper(object):
 
     >>> import memcache
     >>> mc = memcache.Client(['127.0.0.1:11211'])
-    >>> mcw = MemcachedWrapper(mc)
+    >>> mcw = MemcachedWrapper(mc, 'test')
     >>> 'foo' in mcw
     False
     >>> mcw['foo'] = 'bar'
