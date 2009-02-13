@@ -18,17 +18,33 @@ urls = (
     '/([0-9a-f]{40})', 'urldammit',
     '/find/(.*)', 'find',
     )
-application = web.application(urls, globals() )
 
-manager = URIManager(config.get_db())
+instances = {'manager': None, 'known': None, 'unknown': None}
+def make_instance_getter(key, fn):
+    def get_instance():
+        if instances[key] == None:
+            instances[key] = fn()
+        return instances[key]
+    return get_instance
 
-# cache URIs we know about
-known = cachemanager.new_instance('known')
-
-# cache queries we know nothing to avoid
-# backend requests
-unknown = cachemanager.new_instance('unknown')
-
+"""
+import sys
+if len(sys.argv) > 1 and sys.argv[1] == "webtest":
+    print "Running in test mode"
+    from dammit.nullcache import NullCache
+    get_manager = make_instance_getter('manager', lambda: URIManager(config.get_db_mock()))
+    get_known = make_instance_getter('known', lambda: NullCache())
+    get_unknown = make_instance_getter('unknown', lambda: NullCache())
+    del sys.argv[1]
+else:
+    get_manager = make_instance_getter('manager', lambda: URIManager(config.get_db()))
+    get_known = make_instance_getter('known', lambda: cachemanager.new_instance('known'))
+    get_unknown = make_instance_getter('unknown', lambda: cachemanager.new_instance('unknown'))
+"""
+from dammit.nullcache import NullCache
+get_manager = make_instance_getter('manager', lambda: URIManager(config.get_db_mock()))
+get_known = make_instance_getter('known', lambda: NullCache())
+get_unknown = make_instance_getter('unknown', lambda: NullCache())
 
 class urldammit(object):
     """
@@ -129,6 +145,9 @@ class urldammit(object):
                 return cache[key]
             return None
 
+        unknown = get_unknown()
+        known = get_known()
+        
         u = ithas(id, unknown)
         if u:
             web.notfound()
@@ -136,7 +155,7 @@ class urldammit(object):
 
         u = ithas(id, known)
         if not u:
-            u = manager.load(id)
+            u = get_manager().load(id)
             
             
             if not u:
@@ -163,9 +182,11 @@ class urldammit(object):
         tags = unpack_tags(getattr(i, 'tags', []))
         pairs = unpack_pairs(getattr(i, 'pairs', {}))
         location = getattr(i, 'location', None)
+        known = get_known()
+        unknown = get_unknown()
 
         try:
-            u = manager.register(
+            u = get_manager().register(
                 uri,
                 int(status),
                 tags = tags,
@@ -185,9 +206,10 @@ class urldammit(object):
             return False
 
     def _delete(self, id):
+        known = get_known()
         if id in known:
             del known[id]
-        manager.delete(id)
+        get_manager().delete(id)
 
     def _ok(self, u):
         """
@@ -288,14 +310,6 @@ def required(input, key):
 
 
 if __name__ == '__main__':
-    import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "webtest":
-        print "Running in test mode"
-        manager = URIManager(config.get_db_mock())
-        known = {}
-        unknown = {}
-        del sys.argv[1]
-
+    application = web.application(urls, globals())
     application.run()
 
