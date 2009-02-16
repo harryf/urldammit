@@ -13,7 +13,7 @@ import cachemanager
 cache_instance = None
 def get_cache():
     global cache_instance
-    if not cache_instance:
+    if cache_instance == None:
         cache_instance = cachemanager.new_instance('db')
     return cache_instance
 

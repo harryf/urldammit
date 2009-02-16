@@ -41,10 +41,10 @@ else:
     get_known = make_instance_getter('known', lambda: cachemanager.new_instance('known'))
     get_unknown = make_instance_getter('unknown', lambda: cachemanager.new_instance('unknown'))
 """
-from dammit.nullcache import NullCache
-get_manager = make_instance_getter('manager', lambda: URIManager(config.get_db_mock()))
-get_known = make_instance_getter('known', lambda: NullCache())
-get_unknown = make_instance_getter('unknown', lambda: NullCache())
+    
+get_manager = make_instance_getter('manager', lambda: URIManager(config.get_db()))
+get_known = make_instance_getter('known', lambda: cachemanager.new_instance('known'))
+get_unknown = make_instance_getter('unknown', lambda: cachemanager.new_instance('unknown'))
 
 class urldammit(object):
     """
