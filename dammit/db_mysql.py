@@ -18,7 +18,8 @@ def reconnect(func):
         try:
             return func(self, *args, **kwargs)
         except MySQLdb.OperationalError, e:
-            self._connect()
+            del self.db
+            self.db = self._connect()
             return func(self, *args, **kwargs)
     return retry
 
