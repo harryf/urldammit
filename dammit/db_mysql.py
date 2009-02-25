@@ -63,10 +63,19 @@ class MySQL(object):
     >>> None == m.load(u2.id)
     True
     """    
-    def __init__(self, config = None, dropfirst = False):
+    def __init__(self, config = None, dropfirst = False, bootstrap = True):
         self.config = self._default_config(config)
-        self.db = self._connect()
-        self.bootstrap(dropfirst)
+        if bootstrap:
+            self.db = self._connect()
+            self.bootstrap(dropfirst)
+        else:
+            self.db = self._connect(usedb = True)
+
+    def fresh_connection(self):
+        """
+        Make sure we have a fresh connection for each request
+        """
+        return MySQL(config = self.config, bootstrap = False)
 
     @db_cache.load
     @reconnect
@@ -263,25 +272,49 @@ class MySQL(object):
 
         return config
         
-    def _connect(self):
-        try:
-            # This will fail on MySQL < 4.1
-            db = MySQLdb.connect(
-                host = self.config['db_host'],
-                user = self.config['db_user'],
-                passwd = self.config['db_pass'],
-                use_unicode=1,
-                connect_timeout = 5,
-                init_command="set names utf8"
-                )
-        except MySQLdb.OperationalError:
-            db = MySQLdb.connect(
-                host = self.config['db_host'],
-                user = self.config['db_user'],
-                passwd = self.config['db_pass'],
-                connect_timeout = 5,
-                use_unicode=1
-                )
+    def _connect(self, usedb = False):
+        if usedb:
+            try:
+                # This will fail on MySQL < 4.1
+                db = MySQLdb.connect(
+                    host = self.config['db_host'],
+                    user = self.config['db_user'],
+                    passwd = self.config['db_pass'],
+                    db = self.config['db_name'],
+                    use_unicode=1,
+                    connect_timeout = 5,
+                    init_command="set names utf8"
+                    )
+            except MySQLdb.OperationalError:
+                db = MySQLdb.connect(
+                    host = self.config['db_host'],
+                    user = self.config['db_user'],
+                    passwd = self.config['db_pass'],
+                    db = self.config['db_name'],
+                    connect_timeout = 5,
+                    use_unicode=1
+                    )
+        else:
+            # When bootstrapping, we may not yet have a
+            # DB to use...
+            try:
+                # This will fail on MySQL < 4.1
+                db = MySQLdb.connect(
+                    host = self.config['db_host'],
+                    user = self.config['db_user'],
+                    passwd = self.config['db_pass'],
+                    use_unicode=1,
+                    connect_timeout = 5,
+                    init_command="set names utf8"
+                    )
+            except MySQLdb.OperationalError:
+                db = MySQLdb.connect(
+                    host = self.config['db_host'],
+                    user = self.config['db_user'],
+                    passwd = self.config['db_pass'],
+                    connect_timeout = 5,
+                    use_unicode=1
+                    )
 
         db.charset = 'utf8'
         return db

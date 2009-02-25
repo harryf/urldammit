@@ -604,7 +604,7 @@ class URIManager(object):
         >>> u2.uri == "http://local.ch/test.html"
         True
         """
-        return self.db.load(id)
+        return self.db.fresh_connection().load(id)
 
     def register(self, uri, status = 200, **kwargs):
         """
@@ -667,8 +667,9 @@ class URIManager(object):
         True
         """
         id = URI.hash(uri)
+        db = self.db.fresh_connection()
 
-        u = self.db.load(id)
+        u = db.load(id)
         newrecord = True
 
         if u:
@@ -690,7 +691,8 @@ class URIManager(object):
                     setattr(uri, key, value)
                     updated = True
             except Exception, e:
-                logging.error("Error applying key '%s' for '%s': %s", key, uri.uri, e)
+                if not status == 200 and key == 'location':
+                    logging.error("Error applying key '%s' for '%s': %s", key, uri.uri, e)
             return updated
             
 
@@ -714,11 +716,11 @@ class URIManager(object):
         if newrecord:
             u.created = now
             u.updated = now
-            self.db.insert(u)
+            db.insert(u)
         else:
             if updated:
                 u.updated = now
-                self.db.update(u)
+                db.update(u)
 
         return u
 
@@ -734,7 +736,7 @@ class URIManager(object):
         >>> print um.load(u.id)
         None
         """
-        self.db.delete(id)
+        self.db.fresh_connection().delete(id)
 
 def _test():
     import doctest
