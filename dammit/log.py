@@ -7,6 +7,7 @@ class Log(WsgiLog):
         WsgiLog.__init__(
             self,
             application,
+            logformat = '%(message)s',
             tofile = True,
             file = config.log_file,
             interval = config.log_interval,
