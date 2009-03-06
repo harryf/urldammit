@@ -176,8 +176,7 @@ class urldammit(object):
             return False
 
         if not self.validstatus.match(status):
-            self._badrequest("Bad value for status: '%s'" % status)
-            return False
+            return self._badrequest("Bad value for status: '%s'" % status)
 
         tags = unpack_tags(getattr(i, 'tags', []))
         pairs = unpack_pairs(getattr(i, 'pairs', {}))
@@ -202,8 +201,7 @@ class urldammit(object):
             return
 
         except URIError, e:
-            self._badrequest(e.message)
-            return False
+            return self._badrequest(e)
 
     def _delete(self, id):
         known = get_known()
