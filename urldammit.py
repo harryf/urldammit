@@ -5,6 +5,7 @@ import web
 from dammit import cachemanager
 from dammit.request import *
 from dammit.uri import *
+from dammit.log import Log
 
 import view
 from view import render
@@ -309,5 +310,5 @@ def required(input, key):
 
 if __name__ == '__main__':
     application = web.application(urls, globals())
-    application.run()
+    application.run(Log)
 
