@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
 import time
 import MySQLdb
@@ -136,22 +136,26 @@ class MySQL(object):
         cursor = self.db.cursor()
         
         sql = """INSERT INTO urldammit_uris
-        ( id, uri, location, status, created, updated )
+        ( id, uri, created, location, status, updated )
         VALUES
         ( %s, %s, %s, %s, %s, %s )
+        ON DUPLICATE KEY UPDATE
+        location = %s, status = %s, updated = %s
         """
+
+        create_date = todatetime(uri.created)
+        update_date = todatetime(uri.updated)
+        
         params = (
-            uri.id, uri.uri, uri.location, uri.status,
-            todatetime(uri.created),
-            todatetime(uri.updated)
+            uri.id, uri.uri, create_date,
+            uri.location, uri.status, update_date
             )
 
-        try:
-            cursor.execute( sql, params )
-        except IntegrityError:
-            # update instead...
-            self.update(uri)
-            return
+        # Duplicate the UPDATE params
+        params = params + params[3:]
+        print "Got here: " + str(params)
+
+        cursor.execute( sql, params )
 
         self._store_tags(cursor, uri, deletefirst = False)
         self._store_pairs(cursor, uri, deletefirst = False)
@@ -281,6 +285,7 @@ class MySQL(object):
                     user = self.config['db_user'],
                     passwd = self.config['db_pass'],
                     db = self.config['db_name'],
+                    charset='utf8',
                     use_unicode=1,
                     connect_timeout = 5,
                     init_command="set names utf8"
@@ -292,6 +297,7 @@ class MySQL(object):
                     passwd = self.config['db_pass'],
                     db = self.config['db_name'],
                     connect_timeout = 5,
+                    charset='utf8',
                     use_unicode=1
                     )
         else:
